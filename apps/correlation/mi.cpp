@@ -41,7 +41,7 @@
 
 class app_parameters : public parameters_base {
 	public:
-		enum method_type : int { BSPLINE = 1, ADAPTIVE_FAST = 3 };
+		enum method_type : int { BSPLINE = 1, ADAPTIVE_FAST = 2 };
 
 
 		int num_bins;
@@ -54,7 +54,7 @@ class app_parameters : public parameters_base {
 		virtual void config(CLI::App& app) {
             app.add_option("-b,--bins", num_bins, "No. of bins")->group("MI");
 			app.add_option("-s,--spline_order", spline_order, "Spline Order")->group("MI");	
-			app.add_option("-m,--method", method, "Algorithm: B-spline MI=1, Adaptive partitioning=3")->group("MI");
+			app.add_option("-m,--method", method, "Algorithm: B-spline MI=1, Adaptive partitioning=2")->group("MI");
 		}
 
 		virtual void print(const char * prefix) {
