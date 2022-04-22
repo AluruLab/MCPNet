@@ -1,0 +1,7 @@
+if (BUILD_APPLICATIONS)
+    add_subdirectory(correlation)
+    add_subdirectory(filter)
+    add_subdirectory(transform)
+    add_subdirectory(combine)
+    add_subdirectory(pipeline)
+endif()
