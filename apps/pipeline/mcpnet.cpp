@@ -133,22 +133,22 @@ void compute_mi(MatrixType<T> const & input, int const & bins, MatrixType<T> & d
 
 	// 1. Scale : Vector -> Scaled Vector, partitioning
 	splash::pattern::GlobalTransform<MatrixType<T>, 
-		wave::kernel::MinMaxScale<T>,
+		mcp::kernel::MinMaxScale<T>,
 		MatrixType<T>> scaler;
 	MatrixType<T> dscaled(input.rows(), input.columns());
-	scaler(input, wave::kernel::MinMaxScale<T>(), dscaled);
+	scaler(input, mcp::kernel::MinMaxScale<T>(), dscaled);
 
 	// 
 	// 2. Compute Weights : Vector -> Weight Vector
 	// 
 	int num_samples = (int) input.columns();
 	splash::pattern::Transform<MatrixType<T>, 
-		wave::kernel::BSplineWeightsKernel<T>,
+		mcp::kernel::BSplineWeightsKernel<T>,
 		MatrixType<T>> bspline_weights;
 	MatrixType<T> dweighted(dscaled.rows(), 
 		dscaled.columns() * bins + 1);
 	bspline_weights(dscaled, 
-		wave::kernel::BSplineWeightsKernel<T>(
+		mcp::kernel::BSplineWeightsKernel<T>(
 			bins,  // 10 bins
 			3,   // spline order
 			num_samples),
@@ -164,10 +164,10 @@ void compute_mi(MatrixType<T> const & input, int const & bins, MatrixType<T> & d
 	// ---- create a VV2S kernel
 	splash::pattern::InnerProduct<
 		MatrixType<T>, 
-		wave::kernel::BSplineMIKernel<T>,
-		MatrixType<T>, true > bspline_mi;		
-	bspline_mi(weighted, weighted, 
-		wave::kernel::BSplineMIKernel<T>(
+		mcp::kernel::BSplineMIKernel<T>,
+		MatrixType<T>, true > mi_proc;		
+	mi_proc(weighted, weighted, 
+		mcp::kernel::BSplineMIKernel<T>(
 			bins,
 			num_samples),
 		dmi);
@@ -183,7 +183,7 @@ void compute_ap_mi(MatrixType<T> const & input,  MatrixType<T> & dmi, bool const
 	if (_add_noise) {
 		auto stime = getSysTime();
 		// ---- create a VV2S kernel
-		using NoiseKernelType = ::wave::kernel::add_noise<T, std::uniform_real_distribution<T>, std::default_random_engine>;
+		using NoiseKernelType = ::mcp::kernel::add_noise<T, std::uniform_real_distribution<T>, std::default_random_engine>;
 		splash::kernel::random_number_generator<> gen;
 		NoiseKernelType noise_adder(gen, 0.0, 0.00001);
 		noisy.resize(input.rows(), input.columns()); 
@@ -214,7 +214,7 @@ void compute_ap_mi(MatrixType<T> const & input,  MatrixType<T> & dmi, bool const
 	// ------------ scale -----------
 	stime = getSysTime();
 	// ---- create a VV2S kernel
-	using HistogramKernelType = wave::kernel::IntegralCumulativeHistogramKernel<size_t, 0>;
+	using HistogramKernelType = mcp::kernel::IntegralCumulativeHistogramKernel<size_t, 0>;
 	splash::pattern::Transform<splash::ds::aligned_matrix<size_t>, 
 		HistogramKernelType,
 		splash::ds::aligned_matrix<size_t>> histographer;
@@ -228,7 +228,7 @@ void compute_ap_mi(MatrixType<T> const & input,  MatrixType<T> & dmi, bool const
 	// 4. Inner Product :  Weight Vector, Weight Vector -> MI
 	stime = getSysTime();
 	// ---- create a VV2S kernel
-	using MIKernelType = wave::kernel::AdaptivePartitionRankMIKernel2<size_t, T>;
+	using MIKernelType = mcp::kernel::AdaptivePartitionRankMIKernel2<size_t, T>;
 	splash::pattern::InnerProduct<
 		splash::ds::aligned_matrix<size_t>, 
 		MIKernelType,
@@ -247,7 +247,7 @@ void compute_mcp2(MatrixType<T> const & genes_to_genes, MatrixType<T> & dmcp2) {
 
 	// first max{min}
 	MatrixType<T> dmaxmin1; 
-	using MXKernelType = wave::kernel::mcp2_maxmin_kernel<T, false, true>;
+	using MXKernelType = mcp::kernel::mcp2_maxmin_kernel<T, false, true>;
 	MXKernelType mxkernel;  // clamped.
 	::splash::pattern::InnerProduct<MatrixType<T>, MXKernelType, MatrixType<T>, true> mxgen_s;
 	dmaxmin1.resize(genes_to_genes.rows(), genes_to_genes.columns());
@@ -258,7 +258,7 @@ void compute_mcp2(MatrixType<T> const & genes_to_genes, MatrixType<T> & dmcp2) {
 
 	dmcp2.resize(dmaxmin1.rows(), dmaxmin1.columns());
 	// correlation close to 0 is bad.
-	using KernelType = wave::kernel::ratio_kernel<T, T>;
+	using KernelType = mcp::kernel::ratio_kernel<T, T>;
 	KernelType kernel;  // clamped.
 	::splash::pattern::BinaryOp<MatrixType<T>, MatrixType<T>, KernelType, MatrixType<T>> tolgen;
 	tolgen(genes_to_genes, g2g_part, dmaxmin1, dmcp_part, kernel, dmcp2, dmcp_part);
@@ -267,7 +267,7 @@ void compute_mcp2(MatrixType<T> const & genes_to_genes, MatrixType<T> & dmcp2) {
 template <typename T, template <typename> class MatrixType>
 void compute_mcp3(MatrixType<T> const & genes_to_genes, MatrixType<T> & dmcp3) {
 
-	using MXKernelType = wave::kernel::mcp2_maxmin_kernel<T, false, true>;
+	using MXKernelType = mcp::kernel::mcp2_maxmin_kernel<T, false, true>;
 	MXKernelType mxkernel;  // clamped.
 	::splash::pattern::InnerProduct<MatrixType<T>, MXKernelType, MatrixType<T>, false> mxgen;
 	::splash::pattern::InnerProduct<MatrixType<T>, MXKernelType, MatrixType<T>, true> mxgen_s;
@@ -292,7 +292,7 @@ void compute_mcp3(MatrixType<T> const & genes_to_genes, MatrixType<T> & dmcp3) {
 	dmcp3.resize(dmaxmin2.rows(), dmaxmin2.columns());
 
 	// correlation close to 0 is bad.
-	using KernelType = wave::kernel::ratio_kernel<T, T>;
+	using KernelType = mcp::kernel::ratio_kernel<T, T>;
 	KernelType kernel;  // clamped.
 	::splash::pattern::BinaryOp<MatrixType<T>, MatrixType<T>, KernelType, MatrixType<T>> tolgen;
 	tolgen(genes_to_genes, g2g_part, dmaxmin2, dmcp_part, kernel, dmcp3, dmcp_part);
@@ -301,7 +301,7 @@ void compute_mcp3(MatrixType<T> const & genes_to_genes, MatrixType<T> & dmcp3) {
 template <typename T, template <typename> class MatrixType>
 void compute_mcp4(MatrixType<T> const & genes_to_genes, MatrixType<T> & dmcp4) {
 
-	using MXKernelType = wave::kernel::mcp2_maxmin_kernel<T, false, true>;
+	using MXKernelType = mcp::kernel::mcp2_maxmin_kernel<T, false, true>;
 	MXKernelType mxkernel;  // clamped.
 	::splash::pattern::InnerProduct<MatrixType<T>, MXKernelType, MatrixType<T>, true> mxgen_s;
 
@@ -324,7 +324,7 @@ void compute_mcp4(MatrixType<T> const & genes_to_genes, MatrixType<T> & dmcp4) {
 	dmcp4.resize(dmaxmin2.rows(), dmaxmin2.columns());
 
 	// correlation close to 0 is bad.
-	using KernelType = wave::kernel::ratio_kernel<T, T>;
+	using KernelType = mcp::kernel::ratio_kernel<T, T>;
 	KernelType kernel;  // clamped.
 	::splash::pattern::BinaryOp<MatrixType<T>, MatrixType<T>, KernelType, MatrixType<T>> tolgen;
 	tolgen(genes_to_genes, g2g_part, dmaxmin2, dmcp_part, kernel, dmcp4, dmcp_part);		
@@ -338,7 +338,7 @@ void compute_maxmins(MatrixType<T> const & genes_to_genes,
 	MatrixType<T> & dmaxmin2, 
 	MatrixType<T> & dmaxmin3 ) {
 
-	using MXKernelType = wave::kernel::mcp2_maxmin_kernel<T, false, true>;
+	using MXKernelType = mcp::kernel::mcp2_maxmin_kernel<T, false, true>;
 	MXKernelType mxkernel;  // clamped.
 	::splash::pattern::InnerProduct<MatrixType<T>, MXKernelType, MatrixType<T>, false> mxgen;
 	::splash::pattern::InnerProduct<MatrixType<T>, MXKernelType, MatrixType<T>, true> mxgen_s;
@@ -428,7 +428,7 @@ void compute_combo(MatrixType<T> const & genes_to_genes,
 // this is not scaling.  not sure why.
 template <typename T, template <typename> class MatrixType>
 void compute_stouffer(MatrixType<T> const & dinput, MatrixType<T> & dstouffer) {
-	using KernelType = wave::kernel::stouffer_vector_kernel<T>;
+	using KernelType = mcp::kernel::stouffer_vector_kernel<T>;
 	KernelType transform;
 	using ReducType = splash::kernel::GaussianParamsExclude1<T, T, true>;
 	ReducType reduc;
@@ -797,8 +797,8 @@ int main(int argc, char* argv[]) {
 	std::vector<std::pair<std::string, size_t>> dsrc_names;
 	std::vector<std::pair<std::string, size_t>> dst_names;
 	std::vector<std::tuple<size_t, size_t, int>> mask, mask2;
-	wave::kernel::aupr_kernel<double, char, double> auprkern;
-	wave::kernel::auroc_kernel<double, char, double> aurockern;
+	mcp::kernel::aupr_kernel<double, char, double> auprkern;
+	mcp::kernel::auroc_kernel<double, char, double> aurockern;
 
 	size_t rows = common_params.num_vectors, columns = common_params.vector_size;
 	std::vector<std::string> genes2;

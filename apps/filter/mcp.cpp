@@ -348,7 +348,7 @@ int main(int argc, char* argv[]) {
 			dmaxmin1.resize(tf_names.size(), input.columns());
 			if (app_params.tf_gene_transition == 1) {
 				// tfs-tfs-genes
-				using MXKernelType = wave::kernel::mcp2_maxmin_kernel<double, true, true>;
+				using MXKernelType = mcp::kernel::mcp2_maxmin_kernel<double, true, true>;
 				MXKernelType mxkernel(tfs);  // clamped.
 				using MXGenType = ::splash::pattern::InnerProduct<MatrixType, MXKernelType, MatrixType, false>;
 				MXGenType mxgen;
@@ -356,7 +356,7 @@ int main(int argc, char* argv[]) {
 				mxgen(tfs_to_genes, genes_to_genes, mxkernel, dmaxmin1);
 			} else {
 				// tfs-genes-genes
-				using MXKernelType = wave::kernel::mcp2_maxmin_kernel<double, false, true>;
+				using MXKernelType = mcp::kernel::mcp2_maxmin_kernel<double, false, true>;
 				MXKernelType mxkernel;  // clamped.
 				using MXGenType = ::splash::pattern::InnerProduct<MatrixType, MXKernelType, MatrixType, false>;
 				MXGenType mxgen;
@@ -365,7 +365,7 @@ int main(int argc, char* argv[]) {
 			}
 
 		} else {
-			using MXKernelType = wave::kernel::mcp2_maxmin_kernel<double, false, true>;
+			using MXKernelType = mcp::kernel::mcp2_maxmin_kernel<double, false, true>;
 			MXKernelType mxkernel;  // clamped.
 			using MXGenSType = ::splash::pattern::InnerProduct<MatrixType, MXKernelType, MatrixType, true>;
 			MXGenSType mxgen;
@@ -389,7 +389,7 @@ int main(int argc, char* argv[]) {
 		MatrixType maxmin1 = dmaxmin1.allgather();
 
 		// correlation close to 0 is bad.
-		using KernelType = wave::kernel::ratio_kernel<double, double>;
+		using KernelType = mcp::kernel::ratio_kernel<double, double>;
 		KernelType kernel;  // clamped.
 		using TolGenType = ::splash::pattern::GlobalBinaryOp<MatrixType, MatrixType, KernelType, MatrixType>;
 		TolGenType tolgen;
@@ -406,9 +406,9 @@ int main(int argc, char* argv[]) {
 		// =============== PARTITION and RUN ===================
 		stime = getSysTime();
 
-		using MaskedMXKernelType = wave::kernel::mcp2_maxmin_kernel<double, true, true>;
+		using MaskedMXKernelType = mcp::kernel::mcp2_maxmin_kernel<double, true, true>;
 		MaskedMXKernelType maskedmxkernel(tfs);  // clamped.
-		using MXKernelType = wave::kernel::mcp2_maxmin_kernel<double, false, true>;
+		using MXKernelType = mcp::kernel::mcp2_maxmin_kernel<double, false, true>;
 		MXKernelType mxkernel;  // clamped.
 
 		// first max{min}
@@ -466,7 +466,7 @@ int main(int argc, char* argv[]) {
 			MatrixType maxmin2t = maxmin2.local_transpose(); 
 
 			// do max.
-			using MaxKernelType = wave::kernel::max_kernel<double>;
+			using MaxKernelType = mcp::kernel::max_kernel<double>;
 			MaxKernelType maxkernel;  // clamped.
 			using MaxGenType = ::splash::pattern::BinaryOp<MatrixType, MatrixType, MaxKernelType, MatrixType>;
 			MaxGenType maxgen;
@@ -491,7 +491,7 @@ int main(int argc, char* argv[]) {
 
 		stime = getSysTime();
 		// correlation close to 0 is bad.
-		using KernelType = wave::kernel::ratio_kernel<double, double>;
+		using KernelType = mcp::kernel::ratio_kernel<double, double>;
 		KernelType kernel;  // clamped.
 		using TolGenType = ::splash::pattern::GlobalBinaryOp<MatrixType, MatrixType, KernelType, MatrixType>;
 		TolGenType tolgen;
@@ -509,9 +509,9 @@ int main(int argc, char* argv[]) {
 		// =============== PARTITION and RUN ===================
 		stime = getSysTime();
 
-		using MaskedMXKernelType = wave::kernel::mcp2_maxmin_kernel<double, true, true>;
+		using MaskedMXKernelType = mcp::kernel::mcp2_maxmin_kernel<double, true, true>;
 		MaskedMXKernelType maskedmxkernel(tfs);  // clamped.
-		using MXKernelType = wave::kernel::mcp2_maxmin_kernel<double, false, true>;
+		using MXKernelType = mcp::kernel::mcp2_maxmin_kernel<double, false, true>;
 		MXKernelType mxkernel;  // clamped.
 		using MXGenSType = ::splash::pattern::InnerProduct<MatrixType, MXKernelType, MatrixType, true>;
 		MXGenSType mxgen_s;
@@ -600,7 +600,7 @@ int main(int argc, char* argv[]) {
 		MatrixType maxmin3 = dmaxmin3.allgather();
 
 		// correlation close to 0 is bad.
-		using KernelType = wave::kernel::ratio_kernel<double, double>;
+		using KernelType = mcp::kernel::ratio_kernel<double, double>;
 		KernelType kernel;  // clamped.
 		using TolGenType = ::splash::pattern::GlobalBinaryOp<MatrixType, MatrixType, KernelType, MatrixType>;
 		TolGenType tolgen;
@@ -627,7 +627,7 @@ int main(int argc, char* argv[]) {
 		// first max{min}
 		MatrixType dmaxmin1; 
 		dmaxmin1.resize(input1.rows(), input2.rows());
-		using MXKernelType = wave::kernel::mcp2_maxmin_kernel<double, false, true>;
+		using MXKernelType = mcp::kernel::mcp2_maxmin_kernel<double, false, true>;
 		MXKernelType mxkernel;  // clamped.
 		using MXGenSType = ::splash::pattern::InnerProduct<MatrixType, MXKernelType, MatrixType, false>;
 		MXGenSType mxgen;
@@ -646,7 +646,7 @@ int main(int argc, char* argv[]) {
 		MatrixType maxmin1 = dmaxmin1.allgather();
 
 		// correlation close to 0 is bad.
-		using KernelType = wave::kernel::ratio_kernel<double, double>;
+		using KernelType = mcp::kernel::ratio_kernel<double, double>;
 		KernelType kernel;  // clamped.
 		using TolGenType = ::splash::pattern::GlobalBinaryOp<MatrixType, MatrixType, KernelType, MatrixType>;
 		TolGenType tolgen;

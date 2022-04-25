@@ -4,12 +4,12 @@ cmake_minimum_required(VERSION 2.8)
 
 
 # project settings
-project(wave)
+project(mcpnet)
 
-set (wave_VERSION_MAJOR 1)
-set (wave_VERSION_MINOR 0)
-set (wave_VERSION_PATCH 0)
-set (wave_VERSION_TWEAK 0)
+set (mcpnet_VERSION_MAJOR 1)
+set (mcpnet_VERSION_MINOR 0)
+set (mcpnet_VERSION_PATCH 0)
+set (mcpnet_VERSION_TWEAK 0)
 
 INCLUDE(CMakeDependentOption)
 
@@ -181,7 +181,7 @@ OPTION(BUILD_TESTS "whether tests should be built" OFF)
 OPTION(BUILD_BENCHMARKS "whether benchmarks should be built" OFF)
 
 # library usage.
-OPTION(USE_ZLIB "whether wave should use ZLIB" OFF)
+OPTION(USE_ZLIB "whether mcpnet should use ZLIB" OFF)
 
 ###### Executable and Libraries
 # Save libs and executables in the same place

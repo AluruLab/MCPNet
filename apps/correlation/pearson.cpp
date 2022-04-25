@@ -153,7 +153,7 @@ int main(int argc, char* argv[]) {
 	// =============== PARTITION and RUN ===================
 	stime = getSysTime();
 	splash::ds::aligned_matrix<double> output(normalized.rows(), normalized.rows());
-	using kernel_type = wave::correlation::PearsonKernel<double>;
+	using kernel_type = mcp::correlation::PearsonKernel<double>;
 	kernel_type correlation;
 	splash::pattern::InnerProduct<splash::ds::aligned_matrix<double>, 
 		kernel_type,

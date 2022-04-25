@@ -143,7 +143,7 @@ int main(int argc, char* argv[]) {
 
 	// scale input and set as output.
 	if (app_params.method == app_parameters::method_type::MADD) {
-		using ScaleKernelType = wave::kernel::scale_kernel<double>;
+		using ScaleKernelType = mcp::kernel::scale_kernel<double>;
 		using ScaleGenType = ::splash::pattern::Transform<MatrixType, ScaleKernelType, MatrixType>;
 		ScaleKernelType scaler(app_params.coeffs[0]);
 		ScaleGenType scalegen;
@@ -168,37 +168,37 @@ int main(int argc, char* argv[]) {
 
 	// now combine.
 	stime = getSysTime();
-	using AddKernelType = wave::kernel::add_kernel<double>;
+	using AddKernelType = mcp::kernel::add_kernel<double>;
 	using AddGenType = ::splash::pattern::BinaryOp<MatrixType, MatrixType, AddKernelType, MatrixType>;
 	AddKernelType addkernel; 
 	AddGenType addgen;
 
-	using SubKernelType = wave::kernel::sub_kernel<double>;
+	using SubKernelType = mcp::kernel::sub_kernel<double>;
 	using SubGenType = ::splash::pattern::BinaryOp<MatrixType, MatrixType, SubKernelType, MatrixType>;
 	SubKernelType subkernel; 
 	SubGenType subgen;
 
-	using MultiplyKernelType = wave::kernel::multiply_kernel<double>;
+	using MultiplyKernelType = mcp::kernel::multiply_kernel<double>;
 	using MultiplyGenType = ::splash::pattern::BinaryOp<MatrixType, MatrixType, MultiplyKernelType, MatrixType>;
 	MultiplyKernelType multiplykernel; 
 	MultiplyGenType multiplygen;
 
-	using DivideKernelType = wave::kernel::ratio_kernel<double>;
+	using DivideKernelType = mcp::kernel::ratio_kernel<double>;
 	using DivideGenType = ::splash::pattern::BinaryOp<MatrixType, MatrixType, DivideKernelType, MatrixType>;
 	DivideKernelType divkernel; 
 	DivideGenType divgen;
 
 
-	using AvgKernelType = wave::kernel::madd_kernel<double>;
+	using AvgKernelType = mcp::kernel::madd_kernel<double>;
 	using AvgGenType = ::splash::pattern::BinaryOp<MatrixType, MatrixType, AvgKernelType, MatrixType>;
 	AvgGenType avggen;
 
-	using MaxKernelType = wave::kernel::max_kernel<double>;
+	using MaxKernelType = mcp::kernel::max_kernel<double>;
 	using MaxGenType = ::splash::pattern::BinaryOp<MatrixType, MatrixType, MaxKernelType, MatrixType>;
 	MaxKernelType maxkernel;
 	MaxGenType maxgen;
 
-	using MinKernelType = wave::kernel::min_kernel<double>;
+	using MinKernelType = mcp::kernel::min_kernel<double>;
 	using MinGenType = ::splash::pattern::BinaryOp<MatrixType, MatrixType, MinKernelType, MatrixType>;
 	MinKernelType minkernel;
 	MinGenType mingen;

@@ -28,7 +28,7 @@
 #include <omp.h>
 #endif
 
-namespace wave { namespace kernel { 
+namespace mcp { namespace kernel { 
 
 template <typename IT, typename IT2 = std::pair<IT, IT>, typename OT = IT>
 class clr_kernel : public splash::kernel::ternary_op<IT, IT2, IT2, OT, splash::kernel::DEGREE::SCALAR> {

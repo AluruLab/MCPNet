@@ -34,7 +34,7 @@
 #include <omp.h>
 #endif
 
-namespace wave { namespace kernel {
+namespace mcp { namespace kernel {
 
 
 template <typename IT, typename Distribution, typename Generator>

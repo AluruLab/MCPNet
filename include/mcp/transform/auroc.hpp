@@ -22,7 +22,7 @@
 #include <vector>
 #include <algorithm>
 
-namespace wave { namespace kernel { 
+namespace mcp { namespace kernel { 
 
 // ROC:
 // true positive rate (sensitivity) vs false positive rate

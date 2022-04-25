@@ -28,7 +28,7 @@
 #include <omp.h>
 #endif
 
-namespace wave { namespace kernel { 
+namespace mcp { namespace kernel { 
 
 
 // if standard deviation is 0, then z score is zero (all values at mean)

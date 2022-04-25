@@ -25,7 +25,7 @@
 
 #include <type_traits>
 
-namespace wave { namespace kernel {
+namespace mcp { namespace kernel {
 
 // apply dpi filter.
 // make this part like a correlation - input row_x and row_z.  also need  i_xz 

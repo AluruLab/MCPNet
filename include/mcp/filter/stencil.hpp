@@ -23,7 +23,7 @@
 #include "splash/utils/partition.hpp"
 #include "splash/patterns/pattern.hpp"
 
-namespace wave { namespace stencil {
+namespace mcp { namespace stencil {
 
 // compute pvalue via permutation.  Permutations is precomputed for the pattern instance.
 // this version loops through the permute iterations at the outermost loop.

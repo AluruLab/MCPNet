@@ -133,7 +133,7 @@ int main(int argc, char* argv[]) {
 
     // correlation close to 0 is bad.
 	// input is full matrix, output is distributed.
-	using ThresholdType = ::wave::stencil::Diagonal<MatrixType>;
+	using ThresholdType = ::mcp::stencil::Diagonal<MatrixType>;
 	ThresholdType thresholder(app_params.target_val);
 	thresholder(input, output);
 

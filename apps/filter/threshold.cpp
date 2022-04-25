@@ -165,14 +165,14 @@ int main(int argc, char* argv[]) {
     // correlation close to 0 is bad.
 	if (app_params.invert) {
 		if (pv_set) { // using pvalue threshold
-			using KernelType = wave::kernel::inverted_threshold2<double, double>;
+			using KernelType = mcp::kernel::inverted_threshold2<double, double>;
 			KernelType kernel(app_params.lower_thresh, app_params.upper_thresh, 0.0);
 			using ThresholdType = ::splash::pattern::GlobalBinaryOp<MatrixType, MatrixType, KernelType, MatrixType>;
 			ThresholdType thresholder;
 			thresholder(input, pv, kernel, output);
 			removed = thresholder.processed;
 		} else {
-			using KernelType = wave::kernel::inverted_threshold<double>;
+			using KernelType = mcp::kernel::inverted_threshold<double>;
 			KernelType kernel(app_params.lower_thresh, app_params.upper_thresh, 0.0);
 			using ThresholdType = ::splash::pattern::GlobalTransform<MatrixType, KernelType, MatrixType>;
 			ThresholdType thresholder;
@@ -181,14 +181,14 @@ int main(int argc, char* argv[]) {
 		}
 	} else {
 		if (pv_set) { // using pvalue threshold
-			using KernelType = wave::kernel::threshold2<double, double>;
+			using KernelType = mcp::kernel::threshold2<double, double>;
 			KernelType kernel(app_params.lower_thresh, app_params.upper_thresh, 0.0);
 			using ThresholdType = ::splash::pattern::GlobalBinaryOp<MatrixType, MatrixType, KernelType, MatrixType>;
 			ThresholdType thresholder;
 			thresholder(input, pv, kernel, output);
 			removed = thresholder.processed;
 		} else {
-			using KernelType = wave::kernel::threshold<double>;
+			using KernelType = mcp::kernel::threshold<double>;
 			KernelType kernel(app_params.lower_thresh, app_params.upper_thresh, 0.0);
 			using ThresholdType = ::splash::pattern::GlobalTransform<MatrixType, KernelType, MatrixType>;
 			ThresholdType thresholder;

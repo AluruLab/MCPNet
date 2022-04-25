@@ -240,14 +240,14 @@ int main(int argc, char* argv[]) {
 
 	// correlation close to 0 is bad.
 	if (tfs.size() > 0) { // using pvalue threshold
-		using KernelType = wave::kernel::dpi_tf_kernel<double>;
+		using KernelType = mcp::kernel::dpi_tf_kernel<double>;
 		KernelType kernel(tfs, app_params.tolerance);
 		using MaskGenType = ::splash::pattern::InnerProduct<MatrixType, KernelType, MaskType>;
 		MaskGenType maskgen;
 		maskgen(input, input, kernel, mask);
 		
 	} else {
-		using KernelType = wave::kernel::dpi_kernel<double>;
+		using KernelType = mcp::kernel::dpi_kernel<double>;
 		KernelType kernel(app_params.tolerance);
 		using MaskGenType = ::splash::pattern::InnerProduct<MatrixType, KernelType, MaskType>;
 		MaskGenType maskgen;
@@ -276,7 +276,7 @@ int main(int argc, char* argv[]) {
 	MatrixType dout; 
 	size_t removed = 0;
 	{
-		using KernelType = wave::kernel::mask<double, true>;
+		using KernelType = mcp::kernel::mask<double, true>;
 		KernelType kernel;
 		using MaskerType = ::splash::pattern::BinaryOp<MatrixType, MaskType, KernelType, MatrixType>;
 		MaskerType masker;

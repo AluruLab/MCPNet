@@ -22,7 +22,7 @@
 #include <vector>
 #include <algorithm>
 
-namespace wave { namespace kernel { 
+namespace mcp { namespace kernel { 
 
 // TODO:
 // [X] sort true edges and not negative edges.  use binary search for negatives. (about 50% faster)

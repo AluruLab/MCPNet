@@ -422,8 +422,8 @@ int main(int argc, char* argv[]) {
 	std::vector<std::pair<std::string, size_t>> dsrc_names;
 	std::vector<std::pair<std::string, size_t>> dst_names;
 	std::vector<std::tuple<size_t, size_t, int>> mask, mask2;
-	wave::kernel::aupr_kernel<double, char, double> auprkern;
-	wave::kernel::auroc_kernel<double, char, double> aurockern;
+	mcp::kernel::aupr_kernel<double, char, double> auprkern;
+	mcp::kernel::auroc_kernel<double, char, double> aurockern;
 
 	size_t rows = common_params.num_vectors, columns = common_params.vector_size;
 	std::vector<std::string> genes2;

@@ -30,7 +30,7 @@
 
 // #define iLN_2 1.4426950408889634073599246810019L
 
-namespace wave { namespace kernel {
+namespace mcp { namespace kernel {
 
 template<typename KT>
 std::vector<KT> buildKnotVector(const int numBins, const int splineOrder) {
@@ -337,7 +337,7 @@ class BSplineEntropyKernel : public splash::kernel::inner_product<IT, OT, splash
 
 
 template<typename IT, typename OT = IT>
-class BSplineMIKernel : public wave::kernel::BSplineEntropyKernel<IT, OT> {
+class BSplineMIKernel : public mcp::kernel::BSplineEntropyKernel<IT, OT> {
 
     using FT = OT; // splash::utils::widened<OT>;
  
@@ -475,7 +475,7 @@ class BSplineMIKernel : public wave::kernel::BSplineEntropyKernel<IT, OT> {
 	public:
 		BSplineMIKernel(int const & _bins, 
                          int const & _numSamples) : 
-             wave::kernel::BSplineEntropyKernel<IT, OT>(_bins, _numSamples) {}
+             mcp::kernel::BSplineEntropyKernel<IT, OT>(_bins, _numSamples) {}
 
         BSplineMIKernel() {}
 

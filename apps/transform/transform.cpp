@@ -217,14 +217,14 @@ int main(int argc, char* argv[]) {
 		output.resize(tf_norms.rows(), tf_norms.columns());
 		
 		if (app_params.method == app_parameters::method_type::CLR ) {
-				using KernelType = wave::kernel::zscored_clr_kernel<double>;
+				using KernelType = mcp::kernel::zscored_clr_kernel<double>;
 				KernelType transform;
 				splash::pattern::GlobalBinaryOp<MatrixType, MatrixType, 
 					KernelType,
 					MatrixType> transformer;
 				transformer(tf_norms, gene_norms, transform, output);
 		} else if (app_params.method == app_parameters::method_type::STOUFFER) {
-				using KernelType = wave::kernel::zscored_stouffer_kernel<double>;
+				using KernelType = mcp::kernel::zscored_stouffer_kernel<double>;
 				KernelType transform;
 				splash::pattern::GlobalBinaryOp<MatrixType, MatrixType, 
 					KernelType,
@@ -245,14 +245,14 @@ int main(int argc, char* argv[]) {
 		using ReducType = splash::kernel::GaussianParamsExclude1<double, double, true>;
 		ReducType reduc;
 		if (app_params.method == app_parameters::method_type::CLR ) {
-				using KernelType = wave::kernel::clr_vector_kernel<double>;
+				using KernelType = mcp::kernel::clr_vector_kernel<double>;
 				KernelType transform;
 				splash::pattern::GlobalReduceTransform<MatrixType, 
 					ReducType, KernelType,
 					MatrixType> transformer;
 				transformer(input, reduc, transform, output);
 		} else if (app_params.method == app_parameters::method_type::STOUFFER) {
-				using KernelType = wave::kernel::stouffer_vector_kernel<double>;
+				using KernelType = mcp::kernel::stouffer_vector_kernel<double>;
 				KernelType transform;
 				splash::pattern::GlobalReduceTransform<MatrixType, 
 					ReducType, KernelType,

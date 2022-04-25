@@ -24,7 +24,7 @@
 #include <set>
 
 
-namespace wave { namespace kernel { 
+namespace mcp { namespace kernel { 
 
 // mask:  0 excludes  1 includes.
 inline double max_of_pairmin_scalar(double const * xx, double const * yy, size_t const & count, double const * mask = nullptr) {

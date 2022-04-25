@@ -24,7 +24,7 @@
 #include <omp.h>
 #endif
 
-namespace wave { namespace correlation { 
+namespace mcp { namespace correlation { 
 
 
 template<typename IT, typename OT = IT>

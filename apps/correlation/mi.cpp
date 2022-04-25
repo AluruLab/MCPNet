@@ -133,7 +133,7 @@ int main(int argc, char* argv[]) {
 		splash::ds::aligned_matrix<double> noisy(input.rows(), input.columns());
 		auto stime = getSysTime();
 		// ---- create a VV2S kernel
-		using NoiseKernelType = ::wave::kernel::add_noise<double, std::uniform_real_distribution<double>, std::default_random_engine>;
+		using NoiseKernelType = ::mcp::kernel::add_noise<double, std::uniform_real_distribution<double>, std::default_random_engine>;
 		splash::kernel::random_number_generator<> gen;
 		NoiseKernelType noise_adder(gen, 0.0, 0.00001);
 		noisy.resize(input.rows(), input.columns()); 
@@ -161,7 +161,7 @@ int main(int argc, char* argv[]) {
 		// ------------ scale -----------  looks okay
 		stime = getSysTime();
 		// ---- create a VV2S kernel
-		using HistogramKernelType = wave::kernel::IntegralCumulativeHistogramKernel<size_t, 0>;
+		using HistogramKernelType = mcp::kernel::IntegralCumulativeHistogramKernel<size_t, 0>;
 		splash::pattern::Transform<splash::ds::aligned_matrix<size_t>, 
 			HistogramKernelType,
 			splash::ds::aligned_matrix<size_t>> histographer;
@@ -175,7 +175,7 @@ int main(int argc, char* argv[]) {
 		// 4. Inner Product :  Weight Vector, Weight Vector -> MI
 		stime = getSysTime();
 		// ---- create a VV2S kernel
-		using MIKernelType = wave::kernel::AdaptivePartitionRankMIKernel2<size_t, double, 0>;
+		using MIKernelType = mcp::kernel::AdaptivePartitionRankMIKernel2<size_t, double, 0>;
 		splash::pattern::InnerProduct<
 			splash::ds::aligned_matrix<size_t>, 
 			MIKernelType,
@@ -204,9 +204,9 @@ int main(int argc, char* argv[]) {
 		//
 		stime = getSysTime();
 		splash::pattern::GlobalTransform<splash::ds::aligned_matrix<double>, 
-			wave::kernel::MinMaxScale<double>,
+			mcp::kernel::MinMaxScale<double>,
 			splash::ds::aligned_matrix<double>> scaler;
-		wave::kernel::MinMaxScale<double> scaling_op;
+		mcp::kernel::MinMaxScale<double> scaling_op;
 		splash::ds::aligned_matrix<double> dscaled;
 		scaler(input, scaling_op, dscaled);
 		splash::ds::aligned_matrix<double> scaled = dscaled.allgather();
@@ -220,11 +220,11 @@ int main(int argc, char* argv[]) {
 		stime = getSysTime();
 		int num_samples = (int) input.columns();
 		splash::pattern::Transform<splash::ds::aligned_matrix<double>, 
-			wave::kernel::BSplineWeightsKernel<double>,
+			mcp::kernel::BSplineWeightsKernel<double>,
 			splash::ds::aligned_matrix<double>> bspline_weights;
 		splash::ds::aligned_matrix<double> dweighted(dscaled.rows(), 
 			dscaled.columns() * app_params.num_bins + 1);
-		wave::kernel::BSplineWeightsKernel<double> weighting_op(app_params.num_bins,
+		mcp::kernel::BSplineWeightsKernel<double> weighting_op(app_params.num_bins,
 			app_params.spline_order, num_samples);
 		bspline_weights(dscaled, weighting_op, dweighted);	
 		splash::ds::aligned_matrix<double> weighted = dweighted.allgather();
@@ -237,9 +237,9 @@ int main(int argc, char* argv[]) {
 		// stime = getSysTime();
 		// splash::ds::aligned_vector<double> summarized(input.rows());
 		// splash::pattern::Reduce<splash::ds::aligned_matrix<double>, 
-		// 	wave::kernel::Entropy1DKernel<double, double>,
+		// 	mcp::kernel::Entropy1DKernel<double, double>,
 		// 	splash::ds::aligned_vector<double>, splash::pattern::DIM_INDEX::ROW> wts_entropy1d;
-		// wave::kernel::Entropy1DKernel<double, double> entropy1d;
+		// mcp::kernel::Entropy1DKernel<double, double> entropy1d;
 		// wts_entropy1d(weighted, entropy1d, summarized); 
 
 		// etime = getSysTime();
@@ -251,12 +251,12 @@ int main(int argc, char* argv[]) {
 		// ---- create a VV2S kernel
 		splash::pattern::InnerProduct<
 			splash::ds::aligned_matrix<double>, 
-			wave::kernel::BSplineMIKernel<double>,
-			splash::ds::aligned_matrix<double>, true > bspline_mi;
-		wave::kernel::BSplineMIKernel<double> mi_op(app_params.num_bins,
+			mcp::kernel::BSplineMIKernel<double>,
+			splash::ds::aligned_matrix<double>, true > mi_proc;
+		mcp::kernel::BSplineMIKernel<double> mi_op(app_params.num_bins,
 											num_samples);
 		splash::ds::aligned_matrix<double> output(input.rows(), input.rows());
-		bspline_mi(weighted, weighted, mi_op, output);
+		mi_proc(weighted, weighted, mi_op, output);
 
 		etime = getSysTime();
 		FMT_ROOT_PRINT("Compute MI in {} sec\n", get_duration_s(stime, etime));

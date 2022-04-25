@@ -28,7 +28,7 @@
 
 #include <type_traits>
 
-namespace wave { namespace kernel {
+namespace mcp { namespace kernel {
 
 // compute the max (along vector) of pairwise min between 2 vectors.  this will be used 2x.
 template <typename IT, bool MASKED=false, bool ALLOW_LOOPS=false>
@@ -62,9 +62,9 @@ class mcp2_maxmin_kernel<IT, MASKED, false> : public splash::kernel::inner_produ
 			// note x and z entries are set to 0.  (self MI excluded).  Then the max is taken.
 			double mx;
 			if (MASKED) 
-				mx = wave::kernel::max_of_pairmin(row_x, row_z, count, x, z, TFs.data());
+				mx = mcp::kernel::max_of_pairmin(row_x, row_z, count, x, z, TFs.data());
 			else 
-				mx = wave::kernel::max_of_pairmin(row_x, row_z, count, x, z);
+				mx = mcp::kernel::max_of_pairmin(row_x, row_z, count, x, z);
 			return static_cast<IT>(mx);
 
 		}
@@ -85,9 +85,9 @@ class mcp2_maxmin_kernel<IT, MASKED, true> : public splash::kernel::inner_produc
 		inline virtual IT operator()(IT const * row_x, IT const * row_z, size_t const & count) const {
 			double mx;
 			if (MASKED) 
-				mx = wave::kernel::max_of_pairmin(row_x, row_z, count, TFs.data());
+				mx = mcp::kernel::max_of_pairmin(row_x, row_z, count, TFs.data());
 			else 
-				mx = wave::kernel::max_of_pairmin(row_x, row_z, count);
+				mx = mcp::kernel::max_of_pairmin(row_x, row_z, count);
 			return static_cast<IT>(mx);
 		}
 };
@@ -284,7 +284,7 @@ class maxmin3_kernel<IT, false> : public splash::kernel::inner_product_pos<IT, I
 					if ((i == x) || (i == z)) continue;
 					excl.insert(i);
 					// // max_j(min(xi, ij, jz))) = min(xi, max_j(min(ij, jz)))
-					mmx = wave::kernel::max_of_pairmin(matrix->data(i), row_z, count, excl);   // TODO: use a mask to mask out multiple entries.
+					mmx = mcp::kernel::max_of_pairmin(matrix->data(i), row_z, count, excl);   // TODO: use a mask to mask out multiple entries.
 					mn = std::min(row_x[i], mmx);
 					mx = std::max(mx, mn);
 					excl.erase(i);
@@ -354,7 +354,7 @@ class maxmin3_kernel<IT, true> : public splash::kernel::inner_product<IT, IT, sp
 				for (size_t i = 0; i < count; ++i) {
 					// get the minimum along path x-i-j-z
 					// // max_j(min(xi, ij, jz))) = min(xi, max_j(min(ij, jz)))
-					mmx = wave::kernel::max_of_pairmin(matrix->data(i), row_z, count);   // TODO: use a mask to mask out multiple entries.
+					mmx = mcp::kernel::max_of_pairmin(matrix->data(i), row_z, count);   // TODO: use a mask to mask out multiple entries.
 					mn = std::min(row_x[i], mmx);
 					mx = std::max(mx, mn);
 

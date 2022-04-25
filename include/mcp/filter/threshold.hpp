@@ -26,7 +26,7 @@
 // filter a matrix or vector by a fixed value.
 
 
-namespace wave { namespace kernel {
+namespace mcp { namespace kernel {
 
 
 // filter by pvalue or by correlation only
