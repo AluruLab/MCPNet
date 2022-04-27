@@ -153,16 +153,16 @@ endif()
 # Build static or dynamic libs?
 # Default: dynamic libraries
 # ----------------------------------------------------------------------------
-OPTION(BUILD_SHARED_LIBS "Build shared libraries (.dll/.so) instead of static ones (.lib/.a)" ON)
+# OPTION(BUILD_SHARED_LIBS "Build shared libraries (.dll/.so) instead of static ones (.lib/.a)" ON)
 
 
 include("${CMAKE_MODULE_DIR}/ExtraWarnings.cmake")
-include("${CMAKE_MODULE_DIR}/GCCFilter.cmake")
+# include("${CMAKE_MODULE_DIR}/GCCFilter.cmake")
 include("${CMAKE_MODULE_DIR}/CompilerProfiling.cmake")
 include("${CMAKE_MODULE_DIR}/OpenMP.cmake")
 include("${CMAKE_MODULE_DIR}/MPI.cmake")
 include("${CMAKE_MODULE_DIR}/SIMD.cmake")
-include("${CMAKE_MODULE_DIR}/MKL.cmake")
+# include("${CMAKE_MODULE_DIR}/MKL.cmake")
 include("${CMAKE_MODULE_DIR}/HDF5.cmake")
 include("${CMAKE_MODULE_DIR}/CodeAnalysis.cmake")
 include("${CMAKE_MODULE_DIR}/Sanitizer.cmake")
@@ -178,7 +178,7 @@ include("${CMAKE_MODULE_DIR}/Sanitizer.cmake")
 # Check if the user want to build sample applications
 OPTION(BUILD_APPLICATIONS "whether applications should be built" ON)
 OPTION(BUILD_TESTS "whether tests should be built" OFF)
-OPTION(BUILD_BENCHMARKS "whether benchmarks should be built" OFF)
+# OPTION(BUILD_BENCHMARKS "whether benchmarks should be built" OFF)
 
 # library usage.
 OPTION(USE_ZLIB "whether mcpnet should use ZLIB" OFF)

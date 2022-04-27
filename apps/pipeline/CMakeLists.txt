@@ -7,19 +7,6 @@ set(pipe_link_flags "")
 set(pipe_link_libs "m")
 
 
-#if (USE_ZLIB)
-#	set(pipe_compile_defs "${pipe_compile_defs};-DCOMPRESSED_INPUT")
-#	set(pipe_link_libs "z;${pipe_link_libs}")
-#endif(USE_ZLIB)
-
-#if (USE_MKL)
-#	set(pipe_compile_defs "${pipe_compile_defs};-DWITH_MKL;${MKL_DEFINES}")
-#	set(pipe_compile_flags "${MKL_COMPILE_FLAGS}")
-#	set(pipe_link_flags "${MKL_LINK_FLAGS}")
-#	include_directories(${MKL_INCLUDE_DIRS})
-#	link_directories(${MKL_LIB_DIRS})
-#	set(pipe_link_libs "${MKL_LIBS};${pipe_link_libs}")
-#endif(USE_MKL)
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
 	set(pipe_compile_defs "${pipe_compile_defs};-DHAVE_INTEL_ICC")
