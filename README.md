@@ -31,16 +31,25 @@ MCPNet can be downloaded directly from
 
 https://github.com/AluruLab/MCPNet/releases/tag/paper2022
 
-or the latest version can be accessed via git
+or the latest version can be accessed via git.  Replace the curly braced directory with your actual directory.
 
-`git clone https://github.com/AluruLab/MCPNet.git`
+`git clone https://github.com/AluruLab/MCPNet.git {MCPNet_source_dir}`
+
+Next the submodules need to be initialied and updated.
+
+`cd {MCPNet_source_dir}`
+
+`git submodule update --init --recursive`
+
 
 ### Building MCPNet
 
 To build MCPNet, run the following from a linux command prompt to set up the build directory and configure the build.  Replace the curly braced directory with your actual directory.   
 
 `mkdir {MCPNet_build_dir}`
+
 `cd {MCPNet_build_dir}`
+
 `cmake {MCPNet_source_dir}`
 
 CMake allows customizing the compile options, including turning on or off support for OpenMP, MPI, HDF5, and SIMD instructions.  We recommend that these be left as default, ON.   The easiest way to change these settings is to use the CMake gui, ccmake.
