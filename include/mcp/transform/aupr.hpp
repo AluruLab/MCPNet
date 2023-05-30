@@ -545,12 +545,12 @@ class aupr_kernel : public splash::kernel::masked_reduce<IT, LABEL, OT, splash::
             if (rank == 0) {
                 aupr = this->operator()(all_pos.data(), all_pos.size(), all_neg.data(), all_neg.size());
             } 
-            etime = getSysTime();
-            FMT_ROOT_PRINT("compute for AUPR {} in {} sec\n", aupr, get_duration_s(stime, etime));
 
             // then scatter results.
             splash::utils::mpi::datatype<OT> dt;
             MPI_Bcast(&aupr, 1, dt.value, 0, comm);
+            etime = getSysTime();
+            FMT_ROOT_PRINT("compute for AUPR {} in {} sec\n", aupr, get_duration_s(stime, etime));
 
             return aupr;
         }

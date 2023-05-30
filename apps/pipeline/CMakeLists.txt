@@ -21,7 +21,7 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 endif()
 
 
-set(TRANSFORM_APPS mcpnet)
+set(TRANSFORM_APPS mcpnet eval_mcpnet)
 
 foreach( exec IN LISTS TRANSFORM_APPS)
 	add_executable(${exec} ${exec}.cpp)
