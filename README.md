@@ -71,7 +71,10 @@ You can choose to install into the system bin directory with `make install` but 
 The compilation will generate a set of binaries in the `{MCPNet_build_dir}/bin` directory.  The current release includes the following binaries
 
 ### Full pipeline
-- `mcpnet`:  this is the primary executable that runs the MCPNet pipeline, including MI computation, MCP score calculation, and AUPR and AUROC metrics if groundtruth is supplied.
+- `mcpnet`:  this is the primary executable that runs the MCPNet pipeline, including MI computation, MCP score calculation, and AUPR and AUROC metrics if groundtruth is supplied.  If a list of transcription factors are supplied, then only TF to gene interactions are evaluated.
+
+- `eval_mcpnet`:  this executable is used for evaluating the performance of the ensemble method when only partial truth is provided.  This is suitable when full groundtruth is available, hence synthetic expression data.  The groundtruth is divided into training and testing sets and the AUPR is evaluated for as many iterations as the user specifies.  The distribution of the AUPR is captured and can be plotted.  This binary has essentially the same parameters as mcpnet.
+
 
 ### Pipeline Components
 - `pearson`:  computes the pearson correlation for a given gene expression profile input
@@ -156,4 +159,3 @@ The software is distributed with some example datasets in HDF5 format. Note that
 The mcpnet executable can accept multiple method parameters and will produce output for each one.  The `-o` or `--output` parameter therefore takes a prefix rather than a filename.
 
 `{MCPNet_build_dir}/bin/mcpnet -i {MCPNet_source_dir}/data/gnw2000.h5 -o gnw2000 -m 1 2 3 -t 4 --mi-method 1 -x {MCPNet_source_dir}/data/gnw2000_truenet.csv`
-
