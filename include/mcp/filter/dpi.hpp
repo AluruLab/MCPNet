@@ -74,11 +74,11 @@ class dpi_kernel : public splash::kernel::inner_product_pos<IT, bool, splash::ke
 template <typename IT, bool EQUALITY_EXCLUSION = true>
 class dpi_tf_kernel : public splash::kernel::inner_product_pos<IT, bool, splash::kernel::DEGREE::VECTOR, splash::kernel::DEGREE::VECTOR> {
 	protected:
-		double tol_multiplier;
-		std::vector<double> TFs;
+		IT tol_multiplier;
+		std::vector<IT> TFs;
 
 	public:
-		dpi_tf_kernel(std::vector<double> const & _TFs = std::vector<double>(), double const & tolerance = 0.1) : tol_multiplier(1.0 / (1.0 - tolerance)), TFs(_TFs) {}
+		dpi_tf_kernel(std::vector<IT> const & _TFs = std::vector<IT>(), IT const & tolerance = 0.1) : tol_multiplier(1.0 / (1.0 - tolerance)), TFs(_TFs) {}
 		virtual ~dpi_tf_kernel() {}
 
         void copy_parameters(dpi_tf_kernel const & other) {

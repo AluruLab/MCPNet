@@ -27,8 +27,9 @@
 namespace mcp { namespace kernel { 
 
 // mask:  0 excludes  1 includes.
-inline double max_of_pairmin_scalar(double const * xx, double const * yy, size_t const & count, double const * mask = nullptr) {
-    double val = std::numeric_limits<double>::lowest();
+template<typename T>
+inline T max_of_pairmin_scalar(T const * xx, T const * yy, size_t const & count, T const * mask = nullptr) {
+    T val = std::numeric_limits<double>::lowest();
 
     if (mask) {
         // last ones (up to 3) if there.
@@ -443,11 +444,17 @@ inline double max_of_pairmin(double const * xx, double const * yy, size_t const 
 
 }
 
-// TODO.
-inline double max_of_pairmin(double const * xx, double const * yy, size_t const & count,
-    std::set<size_t> const & excludes, double const * mask = nullptr) {
+inline float max_of_pairmin(float const * xx, float const * yy, size_t const & count,
+    float const * mask = nullptr) {
+        return max_of_pairmin_scalar(xx, yy, count, mask);
+}
 
-    double out = std::numeric_limits<double>::lowest();
+// TODO.
+template<typename T>
+inline T max_of_pairmin(T const * xx, T const * yy, size_t const & count,
+    std::set<size_t> const & excludes, T const * mask = nullptr) {
+
+    T out = std::numeric_limits<T>::lowest();
     // get the first and second stops.
     size_t first = 0;
     size_t last, mask_first;
@@ -472,10 +479,11 @@ inline double max_of_pairmin(double const * xx, double const * yy, size_t const 
 }   
 
 
-inline double max_of_pairmin(double const * xx, double const * yy, size_t const & count,
-    size_t const & exclude_x, size_t const & exclude_y, double const * mask = nullptr) {
+template<typename T>
+inline T max_of_pairmin(T const * xx, T const * yy, size_t const & count,
+    size_t const & exclude_x, size_t const & exclude_y, T const * mask = nullptr) {
 
-    double out = std::numeric_limits<double>::lowest();
+    T out = std::numeric_limits<T>::lowest();
     // get the first and second stops.
     size_t first, last, mask_first;
 

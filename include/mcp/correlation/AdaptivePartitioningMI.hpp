@@ -75,7 +75,7 @@ class add_noise {
 
 		inline void operator()(splash::utils::partition<size_t> const & part, size_t const & cols, size_t const & stride_bytes,
             IT const * input, IT * output) {
-				FMT_PRINT("ADDING NOISE.\n");
+				FMT_ROOT_PRINT("ADDING NOISE.\n");
 				
 			size_t thread_id = 0;
 			size_t num_threads = 1;

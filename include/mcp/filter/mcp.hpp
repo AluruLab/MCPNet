@@ -37,10 +37,10 @@ class mcp2_maxmin_kernel;
 template <typename IT, bool MASKED>
 class mcp2_maxmin_kernel<IT, MASKED, false> : public splash::kernel::inner_product_pos<IT, IT, splash::kernel::DEGREE::VECTOR, splash::kernel::DEGREE::VECTOR> {
 	protected:
-		std::vector<double> TFs;
+		std::vector<IT> TFs;
 
 	public:
-		mcp2_maxmin_kernel(std::vector<double> const & _TFs = std::vector<double>()) : TFs(_TFs) {}
+		mcp2_maxmin_kernel(std::vector<IT> const & _TFs = std::vector<IT>()) : TFs(_TFs) {}
 		virtual ~mcp2_maxmin_kernel() {}
 
         void copy_parameters(mcp2_maxmin_kernel const & other) {
@@ -72,10 +72,10 @@ class mcp2_maxmin_kernel<IT, MASKED, false> : public splash::kernel::inner_produ
 template <typename IT, bool MASKED>
 class mcp2_maxmin_kernel<IT, MASKED, true> : public splash::kernel::inner_product<IT, IT, splash::kernel::DEGREE::VECTOR, splash::kernel::DEGREE::VECTOR> {
 	protected:
-		std::vector<double> TFs;
+		std::vector<IT> TFs;
 
 	public:
-		mcp2_maxmin_kernel(std::vector<double> const & _TFs = std::vector<double>()) : TFs(_TFs) {}
+		mcp2_maxmin_kernel(std::vector<IT> const & _TFs = std::vector<IT>()) : TFs(_TFs) {}
 		virtual ~mcp2_maxmin_kernel() {}
 
         void copy_parameters(mcp2_maxmin_kernel const & other) {
@@ -99,7 +99,7 @@ class mcp_ratio_kernel : public splash::kernel::inner_product_pos<IT, OT, splash
 		mcp2_maxmin_kernel<IT, MASKED, false> maxmin;
 
 	public:
-		mcp_ratio_kernel(std::vector<double> const & _TFs = std::vector<double>()) : maxmin(_TFs) {}
+		mcp_ratio_kernel(std::vector<IT> const & _TFs = std::vector<IT>()) : maxmin(_TFs) {}
 		virtual ~mcp_ratio_kernel() {}
 
         void copy_parameters(mcp_ratio_kernel const & other) {
@@ -130,7 +130,7 @@ class mcp_tolerance_kernel : public splash::kernel::inner_product_pos<IT, OT, sp
 		mcp_ratio_kernel<IT, OT, MASKED> ratio;
 
 	public:
-		mcp_tolerance_kernel(bool const & _clamped = false, std::vector<double> const & _TFs = std::vector<double>() ) : 
+		mcp_tolerance_kernel(bool const & _clamped = false, std::vector<IT> const & _TFs = std::vector<IT>() ) : 
 			clamped(_clamped || std::is_unsigned<OT>::value), ratio(_TFs) {}
 		virtual ~mcp_tolerance_kernel() {}
 
@@ -204,7 +204,7 @@ class mcp_diff_kernel : public splash::kernel::inner_product_pos<IT, OT, splash:
 		mcp2_maxmin_kernel<IT, MASKED, false> maxmin;
 
 	public:
-		mcp_diff_kernel(std::vector<double> const & _TFs = std::vector<double>()) : clamped(std::is_unsigned<OT>::value), maxmin(_TFs) {}
+		mcp_diff_kernel(std::vector<IT> const & _TFs = std::vector<IT>()) : clamped(std::is_unsigned<OT>::value), maxmin(_TFs) {}
 		virtual ~mcp_diff_kernel() {};
 
         void copy_parameters(mcp_diff_kernel const & other) {
@@ -213,8 +213,8 @@ class mcp_diff_kernel : public splash::kernel::inner_product_pos<IT, OT, splash:
         }
 
 		inline virtual OT operator()(size_t const & x, size_t const & z, IT const * row_x, IT const * row_z, size_t const & count) const {
-			double mx = maxmin(x, z, row_x, row_z, count);			
-			double out = static_cast<double>(row_x[z]) - mx;
+			IT mx = maxmin(x, z, row_x, row_z, count);
+			OT out = static_cast<IT>(row_x[z]) - mx;
 			return static_cast<OT>(clamped ? std::max(0.0, out) : out); 
 			
 		}
