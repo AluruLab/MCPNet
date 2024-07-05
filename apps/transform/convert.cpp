@@ -36,6 +36,53 @@
 #endif
 
 
+template<typename DataType>
+void run(splash::io::common_parameters& common_params, 
+         splash::io::mpi_parameters& mpi_params){
+	// =============== SETUP INPUT ===================
+	// NOTE: input data is replicated on all MPI procs.
+	using MatrixType = splash::ds::aligned_matrix<DataType>;
+	MatrixType input;
+	std::vector<std::string> genes;
+	std::vector<std::string> samples;
+	
+	auto stime = getSysTime();
+	auto etime = getSysTime();
+
+	stime = getSysTime();
+	if (common_params.random) {
+		input = make_random_matrix<DataType>(common_params.rseed, 
+			common_params.rmin, common_params.rmax, 
+			common_params.num_vectors, common_params.vector_size,
+			genes, samples);
+	} else {
+		input = read_matrix<DataType>(common_params.input, 
+            common_params.h5_group, common_params.num_vectors, 
+            common_params.vector_size, genes, samples, 
+            common_params.skip, 1, common_params.h5_gene_key,
+            common_params.h5_samples_key, common_params.h5_matrix_key);
+	}
+	etime = getSysTime();
+	FMT_ROOT_PRINT("Load data from {} in {} sec\n", common_params.input, get_duration_s(stime, etime));
+
+	if (mpi_params.rank == 0) {
+		mpi_params.print("[PARAM] ");
+		common_params.print("[PARAM] ");
+	}
+
+
+	// ===== DEBUG ====== WRITE OUT INPUT =========
+	{	// NOTE: rank 0 writes out.
+		stime = getSysTime();
+		// write to file.  MPI enabled.  Not thread enabled.
+		if (mpi_params.rank == 0)
+			write_matrix(common_params.output, "array", genes, samples, input);
+		etime = getSysTime();
+		FMT_ROOT_PRINT("converted to {} in {} sec\n", common_params.output, get_duration_s(stime, etime));
+	}
+
+	FMT_FLUSH();
+}
 
 int main(int argc, char* argv[]) {
 
@@ -70,48 +117,11 @@ int main(int argc, char* argv[]) {
 	omp_set_num_threads(common_params.num_threads);
 #endif
 
-	// =============== SETUP INPUT ===================
-	// NOTE: input data is replicated on all MPI procs.
-	using MatrixType = splash::ds::aligned_matrix<double>;
-	MatrixType input;
-	std::vector<std::string> genes;
-	std::vector<std::string> samples;
-	
-	auto stime = getSysTime();
-	auto etime = getSysTime();
 
-	stime = getSysTime();
-	if (common_params.random) {
-		input = make_random_matrix(common_params.rseed, 
-			common_params.rmin, common_params.rmax, 
-			common_params.num_vectors, common_params.vector_size,
-			genes, samples);
-	} else {
-		input = read_matrix<double>(common_params.input, "array", 
-			common_params.num_vectors, common_params.vector_size,
-			genes, samples);
-	}
-	etime = getSysTime();
-	FMT_ROOT_PRINT("Load data from {} in {} sec\n", common_params.input, get_duration_s(stime, etime));
-
-	if (mpi_params.rank == 0) {
-		mpi_params.print("[PARAM] ");
-		common_params.print("[PARAM] ");
-	}
-
-
-	// ===== DEBUG ====== WRITE OUT INPUT =========
-	{	// NOTE: rank 0 writes out.
-		stime = getSysTime();
-		// write to file.  MPI enabled.  Not thread enabled.
-		if (mpi_params.rank == 0)
-			write_matrix(common_params.output, "array", genes, samples, input);
-		etime = getSysTime();
-		FMT_ROOT_PRINT("converted to {} in {} sec\n", common_params.output, get_duration_s(stime, etime));
-	}
-
-	FMT_FLUSH();
-
-
+    if(common_params.use_single) {
+        run<float>(common_params, mpi_params);
+    } else {
+        run<double>(common_params, mpi_params);
+    }
 	return 0;
 }

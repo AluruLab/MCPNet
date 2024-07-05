@@ -36,17 +36,25 @@
 #include <omp.h>
 #endif
 
+template<typename DataType>
 class app_parameters : public parameters_base {
 	public:
-		double lower_thresh;  // default value depends on usage.
-		double upper_thresh;  
-        // double pv_thresh;   // <= pv_thresh
+		DataType lower_thresh;  // default value depends on usage.
+		DataType upper_thresh;  
+        // DataType pv_thresh;   // <= pv_thresh
         std::string pv_input;
 		bool invert;
 
-		app_parameters(double const & min = std::numeric_limits<double>::lowest(), 
-            double const & max = std::numeric_limits<double>::max()) : 
+		app_parameters(DataType const & min = std::numeric_limits<DataType>::lowest(), 
+            DataType const & max = std::numeric_limits<DataType>::max()) : 
                 lower_thresh(min), upper_thresh(max), invert(false) {}
+        app_parameters(const app_parameters<double>& other){
+            lower_thresh = DataType(other.lower_thresh);
+            upper_thresh = DataType(other.upper_thresh);
+            pv_input = other.pv_input;
+            invert = other.invert;
+        }
+
 		virtual ~app_parameters() {}
 
 		virtual void config(CLI::App& app) {
@@ -58,52 +66,24 @@ class app_parameters : public parameters_base {
 			// pv_thresh_opt->needs(pv_input_opt);
             lower_thresh_opt->needs(upper_thresh_opt);
 		}
-		virtual void print(const char * prefix) {
-            FMT_ROOT_PRINT("{} value low threshold: {}\n", prefix, lower_thresh); 
-            FMT_ROOT_PRINT("{} value hi threshold: {}\n", prefix, upper_thresh); 
-            // FMT_ROOT_PRINT("{} pvalue threshold: {}\n", prefix, pv_thresh); 
-            FMT_ROOT_PRINT("{} pvalue input: {}\n", prefix, pv_input.c_str()); 
-			FMT_ROOT_PRINT("{} invert selection: {}\n", prefix, (invert ? "Y" : "N"));
+		virtual void print(const char * prefix) const {
+            FMT_ROOT_PRINT("{} value low threshold  : {}\n", prefix, lower_thresh); 
+            FMT_ROOT_PRINT("{} value hi threshold   : {}\n", prefix, upper_thresh); 
+            // FMT_ROOT_PRINT("{} pvalue threshold      : {}\n", prefix, pv_thresh); 
+            FMT_ROOT_PRINT("{} pvalue input         : {}\n", prefix, pv_input.c_str()); 
+			FMT_ROOT_PRINT("{} invert selection     : {}\n", prefix, (invert ? "Y" : "N"));
 		}
         
 };
 
-
-
-int main(int argc, char* argv[]) {
-
-	//==============  PARSE INPUT =====================
-	CLI::App app{"Thresholding"};
-
-	// handle MPI (TODO: replace with MXX later)
-	splash::io::mpi_parameters mpi_params(argc, argv);
-	mpi_params.config(app);
-
-	// set up CLI parsers.
-	splash::io::common_parameters common_params;
-	app_parameters app_params;
-
-	common_params.config(app);
-	app_params.config(app);
-
-	// parse
-	CLI11_PARSE(app, argc, argv);
-
-	// print out, for fun.
-	FMT_ROOT_PRINT_RT("command line: ");
-	for (int i = 0; i < argc; ++i) {
-		FMT_ROOT_PRINT("{} ", argv[i]);
-	}
-	FMT_ROOT_PRINT("\n");
-
-
-#ifdef USE_OPENMP
-	omp_set_num_threads(common_params.num_threads);
-#endif
+template<typename DataType>
+void run(splash::io::common_parameters& common_params,
+         splash::io::mpi_parameters& mpi_params,
+         app_parameters<DataType>& app_params ){
 
 	// =============== SETUP INPUT ===================
 	// NOTE: input data is replicated on all MPI procs.
-	using MatrixType = splash::ds::aligned_matrix<double>;
+	using MatrixType = splash::ds::aligned_matrix<DataType>;
 	MatrixType input, pv;
 	std::vector<std::string> genes;
 	std::vector<std::string> samples;
@@ -113,15 +93,16 @@ int main(int argc, char* argv[]) {
 
 	stime = getSysTime();
 	if (common_params.random) {
-		input = make_random_matrix(common_params.rseed, 
+		input = make_random_matrix<DataType>(common_params.rseed, 
 			common_params.rmin, common_params.rmax, 
 			common_params.num_vectors, common_params.vector_size,
 			genes, samples);
 	} else {
-		input = read_matrix<double>(common_params.input, 
-			"array",
-			common_params.num_vectors, common_params.vector_size,
-			genes, samples);
+		input = read_matrix<DataType>(common_params.input, 
+            common_params.h5_group, common_params.num_vectors, 
+            common_params.vector_size, genes, samples, common_params.skip, 1,
+            common_params.h5_gene_key, common_params.h5_samples_key,
+            common_params.h5_matrix_key);
 	}
 	etime = getSysTime();
 	FMT_ROOT_PRINT("Load data in {} sec\n", get_duration_s(stime, etime));
@@ -131,10 +112,14 @@ int main(int argc, char* argv[]) {
         stime = getSysTime();
         std::vector<std::string> genes2;
 	    std::vector<std::string> samples2;
-        pv = read_matrix<double>(app_params.pv_input, 
-			"array",
-            common_params.num_vectors, common_params.vector_size,
-            genes2, samples2);
+        pv = read_matrix<DataType>(app_params.pv_input, 
+            "/", 
+			common_params.num_vectors, common_params.vector_size,
+			genes2, samples2, common_params.skip, 1, common_params.h5_gene_key,
+            common_params.h5_samples_key, common_params.h5_matrix_key);
+			// "array",
+            // common_params.num_vectors, common_params.vector_size,
+            // genes2, samples2);
         etime = getSysTime();
         FMT_ROOT_PRINT("Load pvalue data in {} sec\n", get_duration_s(stime, etime));
     }
@@ -165,14 +150,14 @@ int main(int argc, char* argv[]) {
     // correlation close to 0 is bad.
 	if (app_params.invert) {
 		if (pv_set) { // using pvalue threshold
-			using KernelType = mcp::kernel::inverted_threshold2<double, double>;
+			using KernelType = mcp::kernel::inverted_threshold2<DataType, DataType>;
 			KernelType kernel(app_params.lower_thresh, app_params.upper_thresh, 0.0);
 			using ThresholdType = ::splash::pattern::GlobalBinaryOp<MatrixType, MatrixType, KernelType, MatrixType>;
 			ThresholdType thresholder;
 			thresholder(input, pv, kernel, output);
 			removed = thresholder.processed;
 		} else {
-			using KernelType = mcp::kernel::inverted_threshold<double>;
+			using KernelType = mcp::kernel::inverted_threshold<DataType>;
 			KernelType kernel(app_params.lower_thresh, app_params.upper_thresh, 0.0);
 			using ThresholdType = ::splash::pattern::GlobalTransform<MatrixType, KernelType, MatrixType>;
 			ThresholdType thresholder;
@@ -181,14 +166,14 @@ int main(int argc, char* argv[]) {
 		}
 	} else {
 		if (pv_set) { // using pvalue threshold
-			using KernelType = mcp::kernel::threshold2<double, double>;
+			using KernelType = mcp::kernel::threshold2<DataType, DataType>;
 			KernelType kernel(app_params.lower_thresh, app_params.upper_thresh, 0.0);
 			using ThresholdType = ::splash::pattern::GlobalBinaryOp<MatrixType, MatrixType, KernelType, MatrixType>;
 			ThresholdType thresholder;
 			thresholder(input, pv, kernel, output);
 			removed = thresholder.processed;
 		} else {
-			using KernelType = mcp::kernel::threshold<double>;
+			using KernelType = mcp::kernel::threshold<DataType>;
 			KernelType kernel(app_params.lower_thresh, app_params.upper_thresh, 0.0);
 			using ThresholdType = ::splash::pattern::GlobalTransform<MatrixType, KernelType, MatrixType>;
 			ThresholdType thresholder;
@@ -213,5 +198,46 @@ int main(int argc, char* argv[]) {
 	FMT_FLUSH();
 
 
+}
+
+
+int main(int argc, char* argv[]) {
+
+	//==============  PARSE INPUT =====================
+	CLI::App app{"Thresholding"};
+
+	// handle MPI (TODO: replace with MXX later)
+	splash::io::mpi_parameters mpi_params(argc, argv);
+	mpi_params.config(app);
+
+	// set up CLI parsers.
+	splash::io::common_parameters common_params;
+	app_parameters<double> app_params;
+
+	common_params.config(app);
+	app_params.config(app);
+
+	// parse
+	CLI11_PARSE(app, argc, argv);
+
+	// print out, for fun.
+	FMT_ROOT_PRINT_RT("command line: ");
+	for (int i = 0; i < argc; ++i) {
+		FMT_ROOT_PRINT("{} ", argv[i]);
+	}
+	FMT_ROOT_PRINT("\n");
+
+
+#ifdef USE_OPENMP
+	omp_set_num_threads(common_params.num_threads);
+#endif
+
+    if(common_params.use_single) {
+        app_parameters<float> flapp_params(app_params);
+        run<float>(common_params, mpi_params, flapp_params);
+    } else {
+        run<double>(common_params, mpi_params, app_params);
+    }
+	
 	return 0;
 }

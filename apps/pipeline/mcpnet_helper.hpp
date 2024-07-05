@@ -36,6 +36,7 @@
 #include "mcp/correlation/AdaptivePartitioningMI.hpp"
 #include "splash/transform/rank.hpp"
 
+#include "mcp/filter/mcp.hpp"
 #include "mcp/filter/dpi.hpp"
 #include "mcp/filter/threshold.hpp"
 #include "mcp/transform/stouffer.hpp"
@@ -207,7 +208,7 @@ void compute_mcp2(MatrixType<T> const & genes_to_genes, MatrixType<T> & dmcp) {
 template <typename T, template <typename> class MatrixType>
 void compute_maxmin1_tfs(MatrixType<T> const & tfs_to_genes, 
 	MatrixType<T> const & genes_to_genes, int const & tf_gene_transition,
-	std::vector<double> const & tfs, MatrixType<T> & dmaxmin) {
+	std::vector<T> const & tfs, MatrixType<T> & dmaxmin) {
 	
 	if ((tf_gene_transition < 0) || (tf_gene_transition > 1)) return;
 
@@ -233,7 +234,7 @@ void compute_maxmin1_tfs(MatrixType<T> const & tfs_to_genes,
 template <typename T, template <typename> class MatrixType>
 void compute_mcp2_tfs(MatrixType<T> const & tfs_to_genes, 
 	MatrixType<T> const & genes_to_genes, int const & tf_gene_transition,
-	std::vector<double> const & tfs, MatrixType<T> & dmcp) {
+	std::vector<T> const & tfs, MatrixType<T> & dmcp) {
 
 	MatrixType<T> dmaxmin;
 	compute_maxmin1_tfs(tfs_to_genes, genes_to_genes, tf_gene_transition, tfs, dmaxmin);
@@ -278,7 +279,7 @@ void compute_mcp3(MatrixType<T> const & genes_to_genes, MatrixType<T> & dmcp) {
 
 template <typename T, template <typename> class MatrixType>
 void compute_maxmin2_tfs(MatrixType<T> const & tfs_to_genes, MatrixType<T> const & genes_to_genes, int const & tf_gene_transition,
-	std::vector<double> const & tfs, MatrixType<T> & dmaxmin) {
+	std::vector<T> const & tfs, MatrixType<T> & dmaxmin) {
 
 	if ((tf_gene_transition < 0) || (tf_gene_transition > 2)) return;
 
@@ -322,7 +323,7 @@ void compute_maxmin2_tfs(MatrixType<T> const & tfs_to_genes, MatrixType<T> const
 
 template <typename T, template <typename> class MatrixType>
 void compute_mcp3_tfs(MatrixType<T> const & tfs_to_genes, MatrixType<T> const & genes_to_genes, int const & tf_gene_transition,
-	std::vector<double> const & tfs, MatrixType<T> & dmcp) {
+	std::vector<T> const & tfs, MatrixType<T> & dmcp) {
 
 	MatrixType<T> dmaxmin;
 	compute_maxmin2_tfs(tfs_to_genes, genes_to_genes, tf_gene_transition, tfs, dmaxmin);
@@ -364,7 +365,7 @@ void compute_mcp4(MatrixType<T> const & genes_to_genes, MatrixType<T> & dmcp) {
 
 template <typename T, template <typename> class MatrixType>
 void compute_maxmin3_tfs(MatrixType<T> const & tfs_to_genes, MatrixType<T> const & genes_to_genes, int const & tf_gene_transition,
-	std::vector<double> const & tfs, MatrixType<T> & dmaxmin) {
+	std::vector<T> const & tfs, MatrixType<T> & dmaxmin) {
 
 	if ((tf_gene_transition < 0) || (tf_gene_transition > 3)) return;
 
@@ -424,7 +425,7 @@ void compute_maxmin3_tfs(MatrixType<T> const & tfs_to_genes, MatrixType<T> const
 
 template <typename T, template <typename> class MatrixType>
 void compute_mcp4_tfs(MatrixType<T> const & tfs_to_genes, MatrixType<T> const & genes_to_genes, int const & tf_gene_transition,
-	std::vector<double> const & tfs, MatrixType<T> & dmcp) {
+	std::vector<T> const & tfs, MatrixType<T> & dmcp) {
 
 	MatrixType<T> dmaxmin;
 	compute_maxmin3_tfs(tfs_to_genes, genes_to_genes, tf_gene_transition, tfs, dmaxmin);
@@ -468,7 +469,7 @@ void compute_maxmins(MatrixType<T> const & genes_to_genes,
 template <typename T, template <typename> class MatrixType>
 void compute_maxmins_tfs(MatrixType<T> const & tfs_to_genes, 
 	MatrixType<T> const & genes_to_genes, 
-	std::vector<double> const & tfs, 
+	std::vector<T> const & tfs, 
 	MatrixType<T> & dmaxmin1, 
 	MatrixType<T> & dmaxmin2, 
 	MatrixType<T> & dmaxmin3 ) {
@@ -511,7 +512,7 @@ void compute_combo(MatrixType<T> const & mi,
 	MatrixType<T> const & dmaxmin1, 
 	MatrixType<T> const & dmaxmin2, 
 	MatrixType<T> const & dmaxmin3,
-	double const * cs,
+	T const * cs,
 	MatrixType<T> & dcombo ) {
 
 	// compute linear combination.
@@ -588,9 +589,9 @@ template <typename T, template <typename> class MatrixType>
 void compute_stouffer_tf(MatrixType<T> const & dinput, MatrixType<T> & dstouffer) {
 	auto stime = getSysTime();
 	splash::pattern::Transform<MatrixType<T>, 
-		splash::kernel::StandardScore<double, double, false>,
+		splash::kernel::StandardScore<T, T, false>,
 		MatrixType<T>> normalizer;
-	splash::kernel::StandardScore<double, double, false> zscore;
+	splash::kernel::StandardScore<T, T, false> zscore;
 
 	// begin by gathering
 	MatrixType<T> tfs_to_genes = dinput.allgather();
@@ -620,7 +621,7 @@ void compute_stouffer_tf(MatrixType<T> const & dinput, MatrixType<T> & dstouffer
 	stime = getSysTime();
 	dstouffer.resize(dinput.rows(), tf_norms.columns());
 	
-	using KernelType = mcp::kernel::zscored_stouffer_kernel<double>;
+	using KernelType = mcp::kernel::zscored_stouffer_kernel<T>;
 	KernelType transform;
 	splash::pattern::BinaryOp<MatrixType<T>, MatrixType<T>, 
 		KernelType,
@@ -889,9 +890,10 @@ select_lower_triangle(
 }
 
 // upper triangle only (should be same as lower triangle).  in global coords of the tf matrix.
+template<typename IT>
 std::vector<std::tuple<size_t, size_t, int>> 
 select_tfs_from_mat(  // 
-	size_t const & local_rows, std::vector<double> const & tfs, 
+	size_t const & local_rows, std::vector<IT> const & tfs, 
 	splash::ds::aligned_matrix<char> const & tf_mat) {
 
 		// need to keep all TF-GENE, regardless of where in the matrix triangle.  
@@ -941,10 +943,11 @@ select_tfs_from_mat(  //
 // mask:  sorted.  (once)  could be distributed.
 // value: could be distribued.
 
+template<typename T>
 void select_values2(std::vector<std::tuple<size_t, size_t, int>>::const_iterator mask_start,
 	std::vector<std::tuple<size_t, size_t, int>>::const_iterator mask_end,
-	splash::ds::aligned_matrix<double> const & dvalues, 
-	splash::ds::aligned_vector<double> & pos, splash::ds::aligned_vector<double> & neg) {
+	splash::ds::aligned_matrix<T> const & dvalues, 
+	splash::ds::aligned_vector<T> & pos, splash::ds::aligned_vector<T> & neg) {
 
 	// now search rows, followed by column.
 	auto stime = getSysTime();
@@ -992,9 +995,11 @@ void select_values2(std::vector<std::tuple<size_t, size_t, int>>::const_iterator
 	etime = getSysTime();
 	FMT_ROOT_PRINT("extracted values.  pos {} neg {} in {} sec\n", pos.size(), neg.size(), get_duration_s(stime, etime));
 }
+
+template<typename T>
 void select_values(std::vector<std::tuple<size_t, size_t, int>> const & mask,
-	splash::ds::aligned_matrix<double> const & dvalues, 
-	splash::ds::aligned_vector<double> & pos, splash::ds::aligned_vector<double> & neg) {
+	splash::ds::aligned_matrix<T> const & dvalues, 
+	splash::ds::aligned_vector<T> & pos, splash::ds::aligned_vector<T> & neg) {
 
 	select_values2(mask.cbegin(), mask.cend(), dvalues, pos, neg);
 
@@ -1041,11 +1046,11 @@ O compute_aupr(std::vector<std::tuple<size_t, size_t, int>> const & dmask,
 
 
 
-template <typename Kernel, typename Kernel2, typename T = double, typename L = char, typename O = double>
+template <typename Kernel, typename Kernel2, typename T, typename O = T, typename L = char>
 O compute_aupr_auroc(std::vector<std::tuple<size_t, size_t, int>> const & dmask,
 	splash::ds::aligned_matrix<T> const & dvals, 
 	Kernel const & auprkern, Kernel2 const & aurockern,
-	splash::ds::aligned_vector<double> & pos, splash::ds::aligned_vector<double> & neg) {
+	splash::ds::aligned_vector<T> & pos, splash::ds::aligned_vector<T> & neg) {
 
 	auto stime = getSysTime();
 	select_values(dmask, dvals, pos, neg);
@@ -1065,8 +1070,9 @@ O compute_aupr_auroc(std::vector<std::tuple<size_t, size_t, int>> const & dmask,
 	return aupr;
 }
 
+template<typename IT>
 void load_tfs(std::string const & tf_input, std::vector<std::string> const & genes, 
-	std::vector<double> & tfs, std::vector<std::string> & tf_names,
+	std::vector<IT> & tfs, std::vector<std::string> & tf_names,
 	int const & rank = 0) {
 
 		if (tf_input.length() == 0 ) return;
@@ -1116,9 +1122,9 @@ void load_tfs(std::string const & tf_input, std::vector<std::string> const & gen
 	FMT_ROOT_PRINT("TFs specified {}, found {}\n", TFs.size(), tf_names.size());
 }
 
-template<typename MatrixType>
+template<typename MatrixType, typename IT>
 void filter_mat_rows_by_tfs(MatrixType const & input, 
-	std::vector<double> const & tfs,
+	std::vector<IT> const & tfs,
 	MatrixType & row_selected) {
 
 	size_t tf_count = 0;
@@ -1137,9 +1143,9 @@ void filter_mat_rows_by_tfs(MatrixType const & input,
 	}
 }
 
-template<typename MatrixType>
+template<typename MatrixType, typename IT>
 void filter_local_mat_rows_by_tfs(MatrixType const & input, 
-	std::vector<double> const & tfs,
+	std::vector<IT> const & tfs,
 	MatrixType & row_selected) {
 
 	splash::utils::partition<size_t> mpi_part = splash::utils::partition<size_t>::make_partition(input.rows());

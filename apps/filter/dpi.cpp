@@ -57,14 +57,22 @@
 // therefore, TF filtering should produce results that are <= than unfiltered results, for maxmin output.
 
 
+template<typename DataType>
 class app_parameters : public parameters_base {
 	public:
-		double tolerance;  // default value depends on usage.
+		DataType tolerance;  // default value depends on usage.
         std::string tf_input;
 		int tf_gene_transition;
-		double diagonal;
+		DataType diagonal;
 
 		app_parameters(double const & tol = 0.1) : tolerance(tol), tf_gene_transition(-1), diagonal(0.0) {}
+        app_parameters(const app_parameters<double>& other){
+            tolerance = DataType(other.tolerance);
+            tolerance = DataType(other.tolerance);
+            tf_input = other.tf_input;
+            tf_gene_transition = other.tf_gene_transition;
+        }
+
 		virtual ~app_parameters() {}
 
 		virtual void config(CLI::App& app) {
@@ -74,53 +82,25 @@ class app_parameters : public parameters_base {
 			app.add_option("--diagonal", diagonal, "Input MI matrix diagonal should be set as this value. default 0. if negative, use original MI")->group("dpi");
 			transition_opt->needs(tf_opt);
 		}
-		virtual void print(const char * prefix) {
-			FMT_ROOT_PRINT("{} DPI tolerance: {}\n", prefix, tolerance); 
-            FMT_ROOT_PRINT("{} TF input: {}\n", prefix, tf_input.c_str()); 
-            FMT_ROOT_PRINT("{} TF-Gene transition: level {}\n", prefix, tf_gene_transition); 
+		virtual void print(const char * prefix) const {
+			FMT_ROOT_PRINT("{} DPI tolerance            : {}\n", prefix, tolerance); 
+            FMT_ROOT_PRINT("{} TF input                 : {}\n", prefix, tf_input.c_str()); 
+            FMT_ROOT_PRINT("{} TF-Gene transition level : {}\n", prefix, tf_gene_transition); 
 
-			FMT_ROOT_PRINT("{} MI diagonal set to: {}\n", prefix, diagonal); 
+			FMT_ROOT_PRINT("{} MI diagonal set to       : {}\n", prefix, diagonal); 
 
 		}
         
 };
 
-
-
-int main(int argc, char* argv[]) {
-
-	//==============  PARSE INPUT =====================
-	CLI::App app{"Data Processing Inequality"};
-
-	// handle MPI (TODO: replace with MXX later)
-	splash::io::mpi_parameters mpi_params(argc, argv);
-	mpi_params.config(app);
-
-	// set up CLI parsers.
-	splash::io::common_parameters common_params;
-	app_parameters app_params;
-
-	common_params.config(app);
-	app_params.config(app);
-
-	// parse
-	CLI11_PARSE(app, argc, argv);
-
-	// print out, for fun.
-	FMT_ROOT_PRINT_RT("command line: ");
-	for (int i = 0; i < argc; ++i) {
-		FMT_ROOT_PRINT("{} ", argv[i]);
-	}
-	FMT_ROOT_PRINT("\n");
-
-#ifdef USE_OPENMP
-	omp_set_num_threads(common_params.num_threads);
-#endif
-
+template<typename DataType>
+void run(splash::io::common_parameters& common_params,
+         splash::io::mpi_parameters& mpi_params,
+         app_parameters<DataType>& app_params ){
 
 	// =============== SETUP INPUT ===================
 	// NOTE: input data is replicated on all MPI procs.
-	using MatrixType = splash::ds::aligned_matrix<double>;
+	using MatrixType = splash::ds::aligned_matrix<DataType>;
 	MatrixType input;
 	std::vector<std::string> genes;
 	std::vector<std::string> samples;
@@ -130,14 +110,15 @@ int main(int argc, char* argv[]) {
 
 	stime = getSysTime();
 	if (common_params.random) {
-		input = make_random_matrix(common_params.rseed, 
+		input = make_random_matrix<DataType>(common_params.rseed, 
 			common_params.rmin, common_params.rmax, 
 			common_params.num_vectors, common_params.vector_size,
 			genes, samples);
 	} else {
-		input = read_matrix<double>(common_params.input, "array", 
+		input = read_matrix<DataType>(common_params.input, common_params.h5_group, 
 			common_params.num_vectors, common_params.vector_size,
-			genes, samples);
+			genes, samples, common_params.skip, 1, common_params.h5_gene_key,
+            common_params.h5_samples_key, common_params.h5_matrix_key);
 	}
 	etime = getSysTime();
 	FMT_ROOT_PRINT("Load data in {} sec\n", get_duration_s(stime, etime));
@@ -166,7 +147,7 @@ int main(int argc, char* argv[]) {
 
 	std::unordered_set<std::string> TFs;
 	std::unordered_set<std::string> gns(genes.begin(), genes.end());
-	std::vector<double> tfs;
+	std::vector<DataType> tfs;
 	std::vector<std::string> tf_names;
 	if (app_params.tf_input.length() > 0) {
 		stime = getSysTime();
@@ -184,7 +165,7 @@ int main(int argc, char* argv[]) {
 	
 		// now check for each gene whether it's in TF list.
 		for (size_t i = 0; i < genes.size(); ++i) {
-			double res = TFs.count(splash::utils::trim(genes[i])) > 0 ? std::numeric_limits<double>::max() : std::numeric_limits<double>::lowest();
+			DataType res = TFs.count(splash::utils::trim(genes[i])) > 0 ? std::numeric_limits<DataType>::max() : std::numeric_limits<DataType>::lowest();
 			// FMT_PRINT("\"{}\"\t{}\t{}\n", splash::utils::trim(genes[i]), genes[i].length(), (res ? "yes" : "no"));
 			tfs.push_back(res); // if this is one of the target TF, then safe it
 			if (res >= 0.0) {
@@ -210,7 +191,7 @@ int main(int argc, char* argv[]) {
 		FMT_ROOT_PRINT("TFs specified {}, found {}\n", TFs.size(), tf_names.size());
 
 		if (tf_names.size() == 0) {
-			return 1;
+			return;
 		}
 	}
 
@@ -240,14 +221,14 @@ int main(int argc, char* argv[]) {
 
 	// correlation close to 0 is bad.
 	if (tfs.size() > 0) { // using pvalue threshold
-		using KernelType = mcp::kernel::dpi_tf_kernel<double>;
+		using KernelType = mcp::kernel::dpi_tf_kernel<DataType>;
 		KernelType kernel(tfs, app_params.tolerance);
 		using MaskGenType = ::splash::pattern::InnerProduct<MatrixType, KernelType, MaskType>;
 		MaskGenType maskgen;
 		maskgen(input, input, kernel, mask);
 		
 	} else {
-		using KernelType = mcp::kernel::dpi_kernel<double>;
+		using KernelType = mcp::kernel::dpi_kernel<DataType>;
 		KernelType kernel(app_params.tolerance);
 		using MaskGenType = ::splash::pattern::InnerProduct<MatrixType, KernelType, MaskType>;
 		MaskGenType maskgen;
@@ -276,7 +257,7 @@ int main(int argc, char* argv[]) {
 	MatrixType dout; 
 	size_t removed = 0;
 	{
-		using KernelType = mcp::kernel::mask<double, true>;
+		using KernelType = mcp::kernel::mask<DataType, true>;
 		KernelType kernel;
 		using MaskerType = ::splash::pattern::BinaryOp<MatrixType, MaskType, KernelType, MatrixType>;
 		MaskerType masker;
@@ -326,5 +307,46 @@ int main(int argc, char* argv[]) {
 	FMT_FLUSH();
 
 
+}
+
+
+
+int main(int argc, char* argv[]) {
+
+	//==============  PARSE INPUT =====================
+	CLI::App app{"Data Processing Inequality"};
+
+	// handle MPI (TODO: replace with MXX later)
+	splash::io::mpi_parameters mpi_params(argc, argv);
+	mpi_params.config(app);
+
+	// set up CLI parsers.
+	splash::io::common_parameters common_params;
+	app_parameters<double> app_params;
+
+	common_params.config(app);
+	app_params.config(app);
+
+	// parse
+	CLI11_PARSE(app, argc, argv);
+
+	// print out, for fun.
+	FMT_ROOT_PRINT_RT("command line: ");
+	for (int i = 0; i < argc; ++i) {
+		FMT_ROOT_PRINT("{} ", argv[i]);
+	}
+	FMT_ROOT_PRINT("\n");
+
+#ifdef USE_OPENMP
+	omp_set_num_threads(common_params.num_threads);
+#endif
+
+    if(common_params.use_single) {
+        app_parameters<float> flapp_params(app_params);
+        run<float>(common_params, mpi_params, flapp_params);
+    } else {
+        run<double>(common_params, mpi_params, app_params);
+    }
+	
 	return 0;
 }

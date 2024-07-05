@@ -56,7 +56,7 @@
 //		if d is not filtered:  d' = d, as all removed elements are <= d by definition.
 // therefore, TF filtering should produce results that are <= than unfiltered results, for maxmin output.
 
-
+template<typename DataType>
 class app_parameters : public parameters_base {
 	public:
 		enum method_type : int { 
@@ -71,10 +71,23 @@ class app_parameters : public parameters_base {
 		std::string second_in;
 		int tf_gene_transition;
 		bool clamped;
-		std::vector<double> diagonals;
+		std::vector<DataType> diagonals;
 		std::vector<std::string> maxmin_outputs;
 
 		app_parameters(double const & tol = 0.1) : compute(MCP2), tf_gene_transition(-1), clamped(false) {}
+        app_parameters(const app_parameters<double>& other){
+            compute = method_type(other.compute);
+            tf_input = other.tf_input;
+            first_in = other.first_in;
+            second_in = other.second_in;
+            tf_gene_transition = other.tf_gene_transition;
+            clamped = other.clamped;
+            maxmin_outputs = other.maxmin_outputs;
+            diagonals.resize(other.diagonals.size());
+            for(std::size_t i = 0; i < diagonals.size();++i){
+                diagonals[i] = DataType(other.diagonals[i]);
+            }
+        }
 		virtual ~app_parameters() {}
 
 		virtual void config(CLI::App& app) {
@@ -96,69 +109,41 @@ class app_parameters : public parameters_base {
 
 
 		}
-		virtual void print(const char * prefix) {
-            FMT_ROOT_PRINT("{} MCP compute method: {}\n", prefix, 
+		virtual void print(const char * prefix) const {
+            FMT_ROOT_PRINT("{} MCP compute method              : {}\n", prefix, 
 				(compute == MCP2 ? "MCP2" : 
 				(compute == MCP3 ? "MCP3" : 
 				(compute == MCP4 ? "MCP4" : 
 				(compute == BIN_MCP ? "" : 
 				"unknown"))))); 
 				// ); 
-            FMT_ROOT_PRINT("{} first input: {}\n", prefix, first_in.c_str()); 
-			FMT_ROOT_PRINT("{} second input: {}\n", prefix, second_in.c_str()); 
+            FMT_ROOT_PRINT("{} first input                     : {}\n", prefix, first_in.c_str()); 
+			FMT_ROOT_PRINT("{} second input                    : {}\n", prefix, second_in.c_str()); 
 
-            FMT_ROOT_PRINT("{} TF input: {}\n", prefix, tf_input.c_str()); 
-            FMT_ROOT_PRINT("{} TF-Gene transition: level {}\n", prefix, tf_gene_transition); 
+            FMT_ROOT_PRINT("{} TF input                        : {}\n", prefix, tf_input.c_str()); 
+            FMT_ROOT_PRINT("{} TF-Gene transition level        : {}\n", prefix, tf_gene_transition); 
 
 			for (auto maxmin_out : maxmin_outputs) {
-	            FMT_ROOT_PRINT("{} MaxMin intermediate output: {}\n", prefix, maxmin_out.c_str()); 
+	            FMT_ROOT_PRINT("{} MaxMin intermediate output     : {}\n", prefix, maxmin_out.c_str()); 
 			}
 
-			FMT_ROOT_PRINT("{} MCP compute clamping output: {}\n", prefix, (clamped ? "true" : "false")); 
+			FMT_ROOT_PRINT("{} MCP compute clamping output     : {}\n", prefix, (clamped ? "true" : "false")); 
 			for (auto d : diagonals) {
-				FMT_ROOT_PRINT("{} MI diagonal set to: {}\n", prefix, d); 
+				FMT_ROOT_PRINT("{} MI diagonal set to             : {}\n", prefix, d); 
 			}
 
 		}
         
 };
 
-
-
-int main(int argc, char* argv[]) {
-
-	//==============  PARSE INPUT =====================
-	CLI::App app{"Data Processing Inequality"};
-
-	// handle MPI (TODO: replace with MXX later)
-	splash::io::mpi_parameters mpi_params(argc, argv);
-	mpi_params.config(app);
-
-	// set up CLI parsers.
-	splash::io::common_parameters common_params;
-	app_parameters app_params;
-
-	common_params.config(app);
-	app_params.config(app);
-
-	// parse
-	CLI11_PARSE(app, argc, argv);
-
-	// print out, for fun.
-	FMT_ROOT_PRINT_RT("command line: ");
-	for (int i = 0; i < argc; ++i) {
-		FMT_ROOT_PRINT("{} ", argv[i]);
-	}
-	FMT_ROOT_PRINT("\n");
-
-#ifdef USE_OPENMP
-	omp_set_num_threads(common_params.num_threads);
-#endif
-
+template<typename DataType>
+void run(splash::io::common_parameters& common_params,
+         splash::io::mpi_parameters& mpi_params,
+         app_parameters<DataType>& app_params ){
 
 	// =============== SETUP INPUT ===================
 	// NOTE: input data is replicated on all MPI procs.
-	using MatrixType = splash::ds::aligned_matrix<double>;
+	using MatrixType = splash::ds::aligned_matrix<DataType>;
 	MatrixType input, input1, input2;
 	std::vector<std::string> genes, genes1, dummy1, genes2;
 	std::vector<std::string> samples;
@@ -169,32 +154,46 @@ int main(int argc, char* argv[]) {
 
 	stime = getSysTime();
 	if (common_params.random) {
-		input = make_random_matrix(common_params.rseed, 
+		input = make_random_matrix<DataType>(common_params.rseed, 
 			common_params.rmin, common_params.rmax, 
 			common_params.num_vectors, common_params.vector_size,
 			genes, samples);
 
-		if(app_params.compute == app_parameters::method_type::BIN_MCP) {
-			input1 = make_random_matrix(common_params.rseed + 2, 
+		if(app_params.compute == app_parameters<DataType>::method_type::BIN_MCP) {
+			input1 = make_random_matrix<DataType>(common_params.rseed + 2, 
 				common_params.rmin, common_params.rmax, 
 				common_params.num_vectors, common_params.num_vectors);
-			input2 = make_random_matrix(common_params.rseed + 8, 
+			input2 = make_random_matrix<DataType>(common_params.rseed + 8, 
 				common_params.rmin, common_params.rmax, 
 				common_params.num_vectors, common_params.num_vectors);
 		}
 
 	} else {
-		input = read_matrix<double>(common_params.input, "array", 
-			common_params.num_vectors, common_params.vector_size,
-			genes, samples);
+		// input = read_matrix<double>(common_params.input, "array", 
+		// 	common_params.num_vectors, common_params.vector_size,
+		// 	genes, samples);
 
+		input = read_matrix<DataType>(common_params.input, common_params.h5_group, 
+			common_params.num_vectors, common_params.vector_size,
+			genes, samples, 
+            common_params.skip, 1, common_params.h5_gene_key,
+            common_params.h5_samples_key, common_params.h5_matrix_key);
 		input1_x = input2_y = dummy2 = common_params.num_vectors;
 
-		if(app_params.compute == app_parameters::method_type::BIN_MCP) {
-			input1 = read_matrix<double>(app_params.first_in, "array", 
-				input1_x, dummy2, genes1, dummy1);
-			input2 = read_matrix<double>(app_params.second_in, "array", 
-				dummy2, input2_y, dummy1, genes2);;
+		if(app_params.compute == app_parameters<DataType>::method_type::BIN_MCP) {
+			// input1 = read_matrix<double>(app_params.first_in, "array", 
+			// 	input1_x, dummy2, genes1, dummy1);
+            input1 = read_matrix<DataType>(app_params.first_in, common_params.h5_group,
+                input1_x, dummy2, genes1, dummy1,
+                common_params.skip, 1, common_params.h5_gene_key,
+                common_params.h5_samples_key, common_params.h5_matrix_key);
+			// input2 = read_matrix<double>(app_params.second_in, "array", 
+			// 	dummy2, input2_y, dummy1, genes2);;
+            input2 = read_matrix<DataType>(app_params.first_in, common_params.h5_group,
+			 	dummy2, input2_y, dummy1, genes2,
+                common_params.skip, 1, common_params.h5_gene_key,
+                common_params.h5_samples_key, common_params.h5_matrix_key);
+                                           
 		}
 	}
 	etime = getSysTime();
@@ -205,7 +204,7 @@ int main(int argc, char* argv[]) {
 	// if diagonal is specified, then use it.
 	bool reset_diag = app_params.diagonals.size() > 0;
 	if (reset_diag) {
-		double diagonal = app_params.diagonals[0];
+		DataType diagonal = app_params.diagonals[0];
 		for (size_t i = 0; i < mc; ++i) {
 			input.at(i, i) = diagonal;
 		}
@@ -235,7 +234,7 @@ int main(int argc, char* argv[]) {
 
 	std::unordered_set<std::string> TFs;
 	std::unordered_set<std::string> gns(genes.begin(), genes.end());
-	std::vector<double> tfs;
+	std::vector<DataType> tfs;
 	std::vector<std::string> tf_names;
 	if (app_params.tf_input.length() > 0) {
 		stime = getSysTime();
@@ -253,7 +252,7 @@ int main(int argc, char* argv[]) {
 	
 		// now check for each gene whether it's in TF list.
 		for (size_t i = 0; i < genes.size(); ++i) {
-			double res = TFs.count(splash::utils::trim(genes[i])) > 0 ? std::numeric_limits<double>::max() : std::numeric_limits<double>::lowest();
+			DataType res = TFs.count(splash::utils::trim(genes[i])) > 0 ? std::numeric_limits<DataType>::max() : std::numeric_limits<DataType>::lowest();
 			// FMT_PRINT("\"{}\"\t{}\t{}\n", splash::utils::trim(genes[i]), genes[i].length(), (res ? "yes" : "no"));
 			tfs.push_back(res); // if this is one of the target TF, then safe it
 			if (res >= 0.0) {
@@ -279,7 +278,7 @@ int main(int argc, char* argv[]) {
 		FMT_ROOT_PRINT("TFs specified {}, found {}\n", TFs.size(), tf_names.size());
 
 		if (tf_names.size() == 0) {
-			return 1;
+			return;
 		}
 	}
 
@@ -339,7 +338,7 @@ int main(int argc, char* argv[]) {
 	// 	need both kernel types.
 	//  need symmetric and assymetric patterns for both types.
 
-	if (app_params.compute == app_parameters::method_type::MCP2) {
+	if (app_params.compute == app_parameters<DataType>::method_type::MCP2) {
 		stime = getSysTime();
 
 		// first max{min}
@@ -348,7 +347,7 @@ int main(int argc, char* argv[]) {
 			dmaxmin1.resize(tf_names.size(), input.columns());
 			if (app_params.tf_gene_transition == 1) {
 				// tfs-tfs-genes
-				using MXKernelType = mcp::kernel::mcp2_maxmin_kernel<double, true, true>;
+				using MXKernelType = mcp::kernel::mcp2_maxmin_kernel<DataType, true, true>;
 				MXKernelType mxkernel(tfs);  // clamped.
 				using MXGenType = ::splash::pattern::InnerProduct<MatrixType, MXKernelType, MatrixType, false>;
 				MXGenType mxgen;
@@ -356,7 +355,7 @@ int main(int argc, char* argv[]) {
 				mxgen(tfs_to_genes, genes_to_genes, mxkernel, dmaxmin1);
 			} else {
 				// tfs-genes-genes
-				using MXKernelType = mcp::kernel::mcp2_maxmin_kernel<double, false, true>;
+				using MXKernelType = mcp::kernel::mcp2_maxmin_kernel<DataType, false, true>;
 				MXKernelType mxkernel;  // clamped.
 				using MXGenType = ::splash::pattern::InnerProduct<MatrixType, MXKernelType, MatrixType, false>;
 				MXGenType mxgen;
@@ -365,7 +364,7 @@ int main(int argc, char* argv[]) {
 			}
 
 		} else {
-			using MXKernelType = mcp::kernel::mcp2_maxmin_kernel<double, false, true>;
+			using MXKernelType = mcp::kernel::mcp2_maxmin_kernel<DataType, false, true>;
 			MXKernelType mxkernel;  // clamped.
 			using MXGenSType = ::splash::pattern::InnerProduct<MatrixType, MXKernelType, MatrixType, true>;
 			MXGenSType mxgen;
@@ -389,7 +388,7 @@ int main(int argc, char* argv[]) {
 		MatrixType maxmin1 = dmaxmin1.allgather();
 
 		// correlation close to 0 is bad.
-		using KernelType = mcp::kernel::ratio_kernel<double, double>;
+		using KernelType = mcp::kernel::ratio_kernel<DataType, DataType>;
 		KernelType kernel;  // clamped.
 		using TolGenType = ::splash::pattern::GlobalBinaryOp<MatrixType, MatrixType, KernelType, MatrixType>;
 		TolGenType tolgen;
@@ -402,13 +401,13 @@ int main(int argc, char* argv[]) {
 		FMT_ROOT_PRINT("Compute MI Ratio in {} sec\n", get_duration_s(stime, etime));
 
 
-	} else if (app_params.compute == app_parameters::method_type::MCP3) {
+	} else if (app_params.compute == app_parameters<DataType>::method_type::MCP3) {
 		// =============== PARTITION and RUN ===================
 		stime = getSysTime();
 
-		using MaskedMXKernelType = mcp::kernel::mcp2_maxmin_kernel<double, true, true>;
+		using MaskedMXKernelType = mcp::kernel::mcp2_maxmin_kernel<DataType, true, true>;
 		MaskedMXKernelType maskedmxkernel(tfs);  // clamped.
-		using MXKernelType = mcp::kernel::mcp2_maxmin_kernel<double, false, true>;
+		using MXKernelType = mcp::kernel::mcp2_maxmin_kernel<DataType, false, true>;
 		MXKernelType mxkernel;  // clamped.
 
 		// first max{min}
@@ -466,7 +465,7 @@ int main(int argc, char* argv[]) {
 			MatrixType maxmin2t = maxmin2.local_transpose(); 
 
 			// do max.
-			using MaxKernelType = mcp::kernel::max_kernel<double>;
+			using MaxKernelType = mcp::kernel::max_kernel<DataType>;
 			MaxKernelType maxkernel;  // clamped.
 			using MaxGenType = ::splash::pattern::BinaryOp<MatrixType, MatrixType, MaxKernelType, MatrixType>;
 			MaxGenType maxgen;
@@ -491,7 +490,7 @@ int main(int argc, char* argv[]) {
 
 		stime = getSysTime();
 		// correlation close to 0 is bad.
-		using KernelType = mcp::kernel::ratio_kernel<double, double>;
+		using KernelType = mcp::kernel::ratio_kernel<DataType, DataType>;
 		KernelType kernel;  // clamped.
 		using TolGenType = ::splash::pattern::GlobalBinaryOp<MatrixType, MatrixType, KernelType, MatrixType>;
 		TolGenType tolgen;
@@ -505,13 +504,13 @@ int main(int argc, char* argv[]) {
 		FMT_ROOT_PRINT("Compute MI Ratios in {} sec\n", get_duration_s(stime, etime));
 
 
-	} else if (app_params.compute == app_parameters::method_type::MCP4) {
+	} else if (app_params.compute == app_parameters<DataType>::method_type::MCP4) {
 		// =============== PARTITION and RUN ===================
 		stime = getSysTime();
 
-		using MaskedMXKernelType = mcp::kernel::mcp2_maxmin_kernel<double, true, true>;
+		using MaskedMXKernelType = mcp::kernel::mcp2_maxmin_kernel<DataType, true, true>;
 		MaskedMXKernelType maskedmxkernel(tfs);  // clamped.
-		using MXKernelType = mcp::kernel::mcp2_maxmin_kernel<double, false, true>;
+		using MXKernelType = mcp::kernel::mcp2_maxmin_kernel<DataType, false, true>;
 		MXKernelType mxkernel;  // clamped.
 		using MXGenSType = ::splash::pattern::InnerProduct<MatrixType, MXKernelType, MatrixType, true>;
 		MXGenSType mxgen_s;
@@ -600,7 +599,7 @@ int main(int argc, char* argv[]) {
 		MatrixType maxmin3 = dmaxmin3.allgather();
 
 		// correlation close to 0 is bad.
-		using KernelType = mcp::kernel::ratio_kernel<double, double>;
+		using KernelType = mcp::kernel::ratio_kernel<DataType, DataType>;
 		KernelType kernel;  // clamped.
 		using TolGenType = ::splash::pattern::GlobalBinaryOp<MatrixType, MatrixType, KernelType, MatrixType>;
 		TolGenType tolgen;
@@ -616,10 +615,10 @@ int main(int argc, char* argv[]) {
 
 
 
-	} else if (app_params.compute == app_parameters::method_type::BIN_MCP) {
+	} else if (app_params.compute == app_parameters<DataType>::method_type::BIN_MCP) {
 		if (app_params.tf_input.length() > 0) {
 			FMT_ROOT_PRINT("transcription factors are not supported when computing MCP score from two partial scores.\n");
-			return 1;
+			return;
 		}
 
 		stime = getSysTime();
@@ -627,7 +626,7 @@ int main(int argc, char* argv[]) {
 		// first max{min}
 		MatrixType dmaxmin1; 
 		dmaxmin1.resize(input1.rows(), input2.rows());
-		using MXKernelType = mcp::kernel::mcp2_maxmin_kernel<double, false, true>;
+		using MXKernelType = mcp::kernel::mcp2_maxmin_kernel<DataType, false, true>;
 		MXKernelType mxkernel;  // clamped.
 		using MXGenSType = ::splash::pattern::InnerProduct<MatrixType, MXKernelType, MatrixType, false>;
 		MXGenSType mxgen;
@@ -646,7 +645,7 @@ int main(int argc, char* argv[]) {
 		MatrixType maxmin1 = dmaxmin1.allgather();
 
 		// correlation close to 0 is bad.
-		using KernelType = mcp::kernel::ratio_kernel<double, double>;
+		using KernelType = mcp::kernel::ratio_kernel<DataType, DataType>;
 		KernelType kernel;  // clamped.
 		using TolGenType = ::splash::pattern::GlobalBinaryOp<MatrixType, MatrixType, KernelType, MatrixType>;
 		TolGenType tolgen;
@@ -669,5 +668,46 @@ int main(int argc, char* argv[]) {
 	FMT_FLUSH();
 
 
+
+}
+
+
+
+int main(int argc, char* argv[]) {
+
+	//==============  PARSE INPUT =====================
+	CLI::App app{"MCP Computation"};
+
+	// handle MPI (TODO: replace with MXX later)
+	splash::io::mpi_parameters mpi_params(argc, argv);
+	mpi_params.config(app);
+
+	// set up CLI parsers.
+	splash::io::common_parameters common_params;
+	app_parameters<double> app_params;
+
+	common_params.config(app);
+	app_params.config(app);
+
+	// parse
+	CLI11_PARSE(app, argc, argv);
+
+	// print out, for fun.
+	FMT_ROOT_PRINT_RT("command line: ");
+	for (int i = 0; i < argc; ++i) {
+		FMT_ROOT_PRINT("{} ", argv[i]);
+	}
+	FMT_ROOT_PRINT("\n");
+
+#ifdef USE_OPENMP
+	omp_set_num_threads(common_params.num_threads);
+#endif
+
+    if(common_params.use_single) {
+        app_parameters<float> flapp_params(app_params);
+        run<float>(common_params, mpi_params, flapp_params);
+    } else {
+        run<double>(common_params, mpi_params, app_params);
+    }
 	return 0;
 }

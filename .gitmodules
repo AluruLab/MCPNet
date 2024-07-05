@@ -6,4 +6,4 @@
 	url = https://bitbucket.org/tcpan/cmake-utils.git
 [submodule "ext/splash"]
 	path = ext/splash
-	url = https://bitbucket.org/tcpan/splash.git
+	url = https://github.com/AluruLab/splash.git

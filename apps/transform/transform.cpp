@@ -46,57 +46,30 @@ class app_parameters : public parameters_base {
 		method_type method;
 		std::string tf_input;
 
-		app_parameters() : method(STOUFFER) {}
+		app_parameters() : method(STOUFFER), tf_input("") {}
 		virtual ~app_parameters() {}
 
 		virtual void config(CLI::App& app) {
-            app.add_option("-m,--method", method, "Algorithm: CLR=1, Stouffer=2");
-			app.add_option("-f,--tf-input", tf_input, "transcription factor file, 1 per line.");
+            app.add_option("-m,--method", method, "Algorithm: CLR=1, Stouffer=2")->capture_default_str();
+			app.add_option("-f,--tf-input", tf_input, "transcription factor file, 1 per line.")->capture_default_str();
 
 		}
-		virtual void print(const char * prefix) {
-			FMT_ROOT_PRINT("{} TF input: {}\n", prefix, tf_input.c_str()); 
-            FMT_ROOT_PRINT("{} computational method: {}\n", prefix, (method == CLR ? "CLR" :
+		virtual void print(const char * prefix) const {
+			FMT_ROOT_PRINT("{} TF input             : {}\n", prefix, tf_input.c_str()); 
+            FMT_ROOT_PRINT("{} computational method : {}\n", prefix, (method == CLR ? "CLR" :
 				"Stouffer")); 
 		}
 };
 
 
-
-int main(int argc, char* argv[]) {
-
-	//==============  PARSE INPUT =====================
-	CLI::App app{"Correlation Transform"};
-
-	// handle MPI (TODO: replace with MXX later)
-	splash::io::mpi_parameters mpi_params(argc, argv);
-	mpi_params.config(app);
-
-	// set up CLI parsers.
-	splash::io::common_parameters common_params;
-	app_parameters app_params;
-
-	common_params.config(app);
-	app_params.config(app);
-
-	// parse
-	CLI11_PARSE(app, argc, argv);
-
-	// print out, for fun.
-	FMT_ROOT_PRINT_RT("command line: ");
-	for (int i = 0; i < argc; ++i) {
-		FMT_ROOT_PRINT("{} ", argv[i]);
-	}
-	FMT_ROOT_PRINT("\n");
-
-
-#ifdef USE_OPENMP
-	omp_set_num_threads(common_params.num_threads);
-#endif
+template<typename DataType>
+void run(splash::io::common_parameters& common_params,
+         splash::io::mpi_parameters& mpi_params,
+         app_parameters& app_params ){
 
 	// =============== SETUP INPUT ===================
 	// NOTE: input data is replicated on all MPI procs.
-	using MatrixType = splash::ds::aligned_matrix<double>;
+	using MatrixType = splash::ds::aligned_matrix<DataType>;
 	MatrixType input;
 	std::vector<std::string> genes;
 	std::vector<std::string> samples;
@@ -106,15 +79,15 @@ int main(int argc, char* argv[]) {
 
 	stime = getSysTime();
 	if (common_params.random) {
-		input = make_random_matrix(common_params.rseed, 
+		input = make_random_matrix<DataType>(common_params.rseed, 
 			common_params.rmin, common_params.rmax, 
 			common_params.num_vectors, common_params.vector_size,
 			genes, samples);
 	} else {
-		input = read_matrix<double>(common_params.input, 
-			"array",
+		input = read_matrix<DataType>(common_params.input, common_params.h5_group, 
 			common_params.num_vectors, common_params.vector_size,
-			genes, samples);
+			genes, samples, common_params.skip, 1, common_params.h5_gene_key,
+            common_params.h5_samples_key, common_params.h5_matrix_key);
 	}
 	etime = getSysTime();
 	FMT_ROOT_PRINT("Load data in {} sec\n", get_duration_s(stime, etime));
@@ -188,9 +161,9 @@ int main(int argc, char* argv[]) {
 	if (app_params.tf_input.length() > 0) {
 		stime = getSysTime();
 		splash::pattern::Transform<MatrixType, 
-			splash::kernel::StandardScore<double, double, false>,
+			splash::kernel::StandardScore<DataType, DataType, false>,
 			MatrixType> normalizer;
-		splash::kernel::StandardScore<double, double, false> zscore;
+		splash::kernel::StandardScore<DataType, DataType, false> zscore;
 
 		// these are distributed so need to gather.
 		MatrixType tf_norms;
@@ -217,14 +190,14 @@ int main(int argc, char* argv[]) {
 		output.resize(tf_norms.rows(), tf_norms.columns());
 		
 		if (app_params.method == app_parameters::method_type::CLR ) {
-				using KernelType = mcp::kernel::zscored_clr_kernel<double>;
+				using KernelType = mcp::kernel::zscored_clr_kernel<DataType>;
 				KernelType transform;
 				splash::pattern::GlobalBinaryOp<MatrixType, MatrixType, 
 					KernelType,
 					MatrixType> transformer;
 				transformer(tf_norms, gene_norms, transform, output);
 		} else if (app_params.method == app_parameters::method_type::STOUFFER) {
-				using KernelType = mcp::kernel::zscored_stouffer_kernel<double>;
+				using KernelType = mcp::kernel::zscored_stouffer_kernel<DataType>;
 				KernelType transform;
 				splash::pattern::GlobalBinaryOp<MatrixType, MatrixType, 
 					KernelType,
@@ -242,17 +215,17 @@ int main(int argc, char* argv[]) {
 		stime = getSysTime();
 		output.resize(input.rows(), input.columns());
 		// set zscore degree of freedom to 1 to use unbiased variance
-		using ReducType = splash::kernel::GaussianParamsExclude1<double, double, true>;
+		using ReducType = splash::kernel::GaussianParamsExclude1<DataType, DataType, true>;
 		ReducType reduc;
 		if (app_params.method == app_parameters::method_type::CLR ) {
-				using KernelType = mcp::kernel::clr_vector_kernel<double>;
+				using KernelType = mcp::kernel::clr_vector_kernel<DataType>;
 				KernelType transform;
 				splash::pattern::GlobalReduceTransform<MatrixType, 
 					ReducType, KernelType,
 					MatrixType> transformer;
 				transformer(input, reduc, transform, output);
 		} else if (app_params.method == app_parameters::method_type::STOUFFER) {
-				using KernelType = mcp::kernel::stouffer_vector_kernel<double>;
+				using KernelType = mcp::kernel::stouffer_vector_kernel<DataType>;
 				KernelType transform;
 				splash::pattern::GlobalReduceTransform<MatrixType, 
 					ReducType, KernelType,
@@ -275,6 +248,44 @@ int main(int argc, char* argv[]) {
 	etime = getSysTime();
 	FMT_ROOT_PRINT("Output in {} sec\n", get_duration_s(stime, etime));
 	FMT_FLUSH();
+}
+
+int main(int argc, char* argv[]) {
+
+	//==============  PARSE INPUT =====================
+	CLI::App app{"Correlation Transform"};
+
+	// handle MPI (TODO: replace with MXX later)
+	splash::io::mpi_parameters mpi_params(argc, argv);
+	mpi_params.config(app);
+
+	// set up CLI parsers.
+	splash::io::common_parameters common_params;
+	app_parameters app_params;
+
+	common_params.config(app);
+	app_params.config(app);
+
+	// parse
+	CLI11_PARSE(app, argc, argv);
+
+	// print out, for fun.
+	FMT_ROOT_PRINT_RT("command line: ");
+	for (int i = 0; i < argc; ++i) {
+		FMT_ROOT_PRINT("{} ", argv[i]);
+	}
+	FMT_ROOT_PRINT("\n");
+
+
+#ifdef USE_OPENMP
+	omp_set_num_threads(common_params.num_threads);
+#endif
+
+    if(common_params.use_single) {
+        run<float>(common_params, mpi_params, app_params);
+    } else {
+        run<double>(common_params, mpi_params, app_params);
+    }
 
 	return 0;
 }

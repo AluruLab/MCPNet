@@ -114,7 +114,7 @@ class app_parameters : public parameters_base {
             opt_group->require_option(1);
 
 		}
-		virtual void print(const char * prefix) {
+		virtual void print(const char * prefix) const {
 			for (auto c : computes) {
 				FMT_ROOT_PRINT("{} MCP Method: {}\n", prefix, 
 					(c == MCP2 ? "MCP2" : 
@@ -460,43 +460,17 @@ std::tuple<double, double, double, double, double, double> eval_combos(
 
 }
 
-int main(int argc, char* argv[]) {
-
-	//==============  PARSE INPUT =====================
-	CLI::App app{"MI Combo Net"};
-
-	// handle MPI (TODO: replace with MXX later)
-	splash::io::mpi_parameters mpi_params(argc, argv);
-	mpi_params.config(app);
-
-	// set up CLI parsers.
-	splash::io::common_parameters common_params;
-	app_parameters app_params;
-
-	common_params.config(app);
-	app_params.config(app);
-
-	// parse
-	CLI11_PARSE(app, argc, argv);
-
-	// print out, for fun.
-	FMT_ROOT_PRINT_RT("command line: ");
-	for (int i = 0; i < argc; ++i) {
-		FMT_ROOT_PRINT("{} ", argv[i]);
-	}
-	FMT_ROOT_PRINT("\n");
-
-#ifdef USE_OPENMP
-	omp_set_num_threads(common_params.num_threads);
-#endif
-
+template<typename DataType>
+void run(splash::io::common_parameters& common_params,
+         splash::io::mpi_parameters& mpi_params,
+         app_parameters& app_params ){
 	size_t iterations = app_params.iters;
 
 
 	// =============== SETUP INPUT ===================
 	// NOTE: input data is replicated on all MPI procs.
-	using MatrixType = splash::ds::aligned_matrix<double>;
-	// using VectorType = splash::ds::aligned_vector<std::pair<double, double>>;
+	using MatrixType = splash::ds::aligned_matrix<DataType>;
+	// using VectorType = splash::ds::aligned_vector<std::pair<DataType, DataTyp>>;
 	MatrixType input;
 	MatrixType mi;
 	std::vector<std::string> genes;
@@ -507,7 +481,7 @@ int main(int argc, char* argv[]) {
 
 	if (app_params.mi_file.length() == 0) {
 		stime = getSysTime();
-		input = read_matrix<double>(common_params.input, "array", 
+		input = read_matrix<DataType>(common_params.input, "array", 
 				common_params.num_vectors, common_params.vector_size,
 				genes, samples, common_params.skip );
 		etime = getSysTime();
@@ -531,7 +505,7 @@ int main(int argc, char* argv[]) {
 		load_tfs(app_params.tf_input, genes, tfs, tf_names, mpi_params.rank);
 		if ((app_params.tf_input.length() > 0) && (tf_names.size() == 0)) {
 			FMT_ROOT_PRINT("ERROR: no transcription factors in the specified file");
-			return 1;
+			return;
 		}
 		etime = getSysTime();
 		FMT_ROOT_PRINT("Loaded,TF,,{},sec\n", get_duration_s(stime, etime));
@@ -989,6 +963,40 @@ int main(int argc, char* argv[]) {
 		}
 
 	}
+
+
+}
+
+
+int main(int argc, char* argv[]) {
+
+	//==============  PARSE INPUT =====================
+	CLI::App app{"MI Combo Net"};
+
+	// handle MPI (TODO: replace with MXX later)
+	splash::io::mpi_parameters mpi_params(argc, argv);
+	mpi_params.config(app);
+
+	// set up CLI parsers.
+	splash::io::common_parameters common_params;
+	app_parameters app_params;
+
+	common_params.config(app);
+	app_params.config(app);
+
+	// parse
+	CLI11_PARSE(app, argc, argv);
+
+	// print out, for fun.
+	FMT_ROOT_PRINT_RT("command line: ");
+	for (int i = 0; i < argc; ++i) {
+		FMT_ROOT_PRINT("{} ", argv[i]);
+	}
+	FMT_ROOT_PRINT("\n");
+
+#ifdef USE_OPENMP
+	omp_set_num_threads(common_params.num_threads);
+#endif
 
 	return 0;
 }

@@ -1,0 +1,12 @@
+-I/usr/include/mpich
+-I/usr/include/hdf5/mpich
+-I./include
+-I./ext/splash/include
+-I./ext/splash/ext/fmt/include
+-I./ext/CLI11/include
+-DUSE_MPI
+-DUSE_OPENMP
+-DUSE_SIMD
+-DVERBOSE
+-D_FORTIFY_SOURCE=2
+

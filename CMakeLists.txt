@@ -1,15 +1,16 @@
 # CMakeLists.txt template
 
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.11)
 
 
 # project settings
-project(mcpnet)
+project(mcpnet C CXX)
 
 set (mcpnet_VERSION_MAJOR 1)
 set (mcpnet_VERSION_MINOR 0)
 set (mcpnet_VERSION_PATCH 0)
 set (mcpnet_VERSION_TWEAK 0)
+set(CMAKE_VERBOSE_MAKEFILE ON)
 
 INCLUDE(CMakeDependentOption)
 

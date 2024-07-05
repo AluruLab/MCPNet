@@ -45,10 +45,102 @@ class app_parameters : public parameters_base {
 		virtual ~app_parameters() {}
 
 		virtual void config(CLI::App& app) {}
-		virtual void print(const char * prefix) {}
+		virtual void print(const char * prefix) const {}
 };
 
+template<typename DataType>
+void run(splash::io::common_parameters& common_params,
+         splash::io::mpi_parameters& mpi_params,
+         app_parameters& app_params ){
+	// =============== SETUP INPUT ===================
+	// NOTE: input data is replicated on all MPI procs.
+	splash::ds::aligned_matrix<DataType> input;
+	std::vector<std::string> genes;
+	std::vector<std::string> samples;
 
+	auto stime = getSysTime();
+	auto etime = getSysTime();
+
+	stime = getSysTime();
+	if (common_params.random) {
+		input = make_random_matrix<DataType>(common_params.rseed, 
+			common_params.rmin, common_params.rmax, 
+			common_params.num_vectors, common_params.vector_size,
+			genes, samples);
+	} else {
+		input = read_matrix<DataType>(common_params.input, 
+            common_params.h5_group, common_params.num_vectors, 
+            common_params.vector_size, genes, samples, 
+            common_params.skip, 1, common_params.h5_gene_key,
+            common_params.h5_samples_key, common_params.h5_matrix_key);
+	}
+	etime = getSysTime();
+	FMT_ROOT_PRINT("Load data in {} sec\n", get_duration_s(stime, etime));
+	// input.print("INPUT: ");
+
+	// ===== DEBUG ====== WRITE OUT INPUT =========
+// {	// NOTE: rank 0 writes out.
+// 	stime = getSysTime();
+// 		// write to file.  MPI enabled.  Not thread enabled.
+// 	write_matrix("input.exp", "array", genes, samples, input);
+// 	etime = getSysTime();
+// 	FMT_ROOT_PRINT("dump input in {} sec\n", get_duration_s(stime, etime));
+// }
+
+	if (mpi_params.rank == 0) {
+		mpi_params.print("[PARAM] ");
+		common_params.print("[PARAM] ");
+		app_params.print("[PARAM] ");
+	}
+
+	// =============== NORMALIZE ==========================
+	// every process normalize fully.
+	// TODO: each rank does its own normalization then combine.
+
+	// ------------ normalize -----------
+	stime = getSysTime();
+	// ---- create a VV2S kernel
+	splash::pattern::Transform<splash::ds::aligned_matrix<DataType>, 
+		splash::kernel::StandardScore<DataType, DataType, false>,
+		splash::ds::aligned_matrix<DataType>> normalizer;
+	splash::kernel::StandardScore<DataType, DataType, false> zscore;
+	splash::ds::aligned_matrix<DataType> normalized(input.rows(), input.columns());
+	normalizer(input, zscore, normalized);
+
+	etime = getSysTime();
+	FMT_ROOT_PRINT("Normalization Partitioned in {} sec\n", get_duration_s(stime, etime));
+	//  normalized.print("NORM: ");
+
+//	===== DEBUG ====== WRITE OUT normalized =========
+// {	// NOTE: rank 0 writes out.
+// 	stime = getSysTime();
+// 		// write to file.  MPI enabled.  Not thread enabled.
+// 	write_matrix("normal.exp", "array", genes, samples, normalized);
+// 	etime = getSysTime();
+// 	FMT_ROOT_PRINT("dump input in {} sec\n", get_duration_s(stime, etime));
+// }
+
+	// =============== PARTITION and RUN ===================
+	stime = getSysTime();
+	splash::ds::aligned_matrix<DataType> output(normalized.rows(), normalized.rows());
+	using kernel_type = mcp::correlation::PearsonKernel<DataType>;
+	kernel_type correlation;
+	splash::pattern::InnerProduct<splash::ds::aligned_matrix<DataType>, 
+		kernel_type,
+		splash::ds::aligned_matrix<DataType>> correlator;
+	correlator(normalized, normalized, correlation, output);
+	etime = getSysTime();
+	FMT_ROOT_PRINT("Correlated in {} sec\n", get_duration_s(stime, etime));
+
+	// =============== WRITE OUT RESULTS ==============
+	// NOTE: rank 0 writes out.
+	stime = getSysTime();
+	write_matrix_distributed(common_params.output, "array", genes, genes, output);
+	etime = getSysTime();
+	FMT_ROOT_PRINT("Output in {} sec\n", get_duration_s(stime, etime));
+	FMT_FLUSH();
+
+}
 
 int main(int argc, char* argv[]) {
 
@@ -83,92 +175,11 @@ int main(int argc, char* argv[]) {
 	FMT_PRINT_RT("omp num threads {}.  user threads {}\n", omp_get_max_threads(), common_params.num_threads);
 #endif
 
-	// =============== SETUP INPUT ===================
-	// NOTE: input data is replicated on all MPI procs.
-	splash::ds::aligned_matrix<double> input;
-	std::vector<std::string> genes;
-	std::vector<std::string> samples;
-
-	auto stime = getSysTime();
-	auto etime = getSysTime();
-
-	stime = getSysTime();
-	if (common_params.random) {
-		input = make_random_matrix(common_params.rseed, 
-			common_params.rmin, common_params.rmax, 
-			common_params.num_vectors, common_params.vector_size,
-			genes, samples);
-	} else {
-		input = read_matrix<double>(common_params.input, 
-			"array",
-			common_params.num_vectors, common_params.vector_size,
-			genes, samples, common_params.skip);
-	}
-	etime = getSysTime();
-	FMT_ROOT_PRINT("Load data in {} sec\n", get_duration_s(stime, etime));
-	// input.print("INPUT: ");
-
-	// ===== DEBUG ====== WRITE OUT INPUT =========
-// {	// NOTE: rank 0 writes out.
-// 	stime = getSysTime();
-// 		// write to file.  MPI enabled.  Not thread enabled.
-// 	write_matrix("input.exp", "array", genes, samples, input);
-// 	etime = getSysTime();
-// 	FMT_ROOT_PRINT("dump input in {} sec\n", get_duration_s(stime, etime));
-// }
-
-	if (mpi_params.rank == 0) {
-		mpi_params.print("[PARAM] ");
-		common_params.print("[PARAM] ");
-		app_params.print("[PARAM] ");
-	}
-
-	// =============== NORMALIZE ==========================
-	// every process normalize fully.
-	// TODO: each rank does its own normalization then combine.
-
-	// ------------ normalize -----------
-	stime = getSysTime();
-	// ---- create a VV2S kernel
-	splash::pattern::Transform<splash::ds::aligned_matrix<double>, 
-		splash::kernel::StandardScore<double, double, false>,
-		splash::ds::aligned_matrix<double>> normalizer;
-	splash::kernel::StandardScore<double, double, false> zscore;
-	splash::ds::aligned_matrix<double> normalized(input.rows(), input.columns());
-	normalizer(input, zscore, normalized);
-
-	etime = getSysTime();
-	FMT_ROOT_PRINT("Normalization Partitioned in {} sec\n", get_duration_s(stime, etime));
-	//  normalized.print("NORM: ");
-
-//	===== DEBUG ====== WRITE OUT normalized =========
-// {	// NOTE: rank 0 writes out.
-// 	stime = getSysTime();
-// 		// write to file.  MPI enabled.  Not thread enabled.
-// 	write_matrix("normal.exp", "array", genes, samples, normalized);
-// 	etime = getSysTime();
-// 	FMT_ROOT_PRINT("dump input in {} sec\n", get_duration_s(stime, etime));
-// }
-
-	// =============== PARTITION and RUN ===================
-	stime = getSysTime();
-	splash::ds::aligned_matrix<double> output(normalized.rows(), normalized.rows());
-	using kernel_type = mcp::correlation::PearsonKernel<double>;
-	kernel_type correlation;
-	splash::pattern::InnerProduct<splash::ds::aligned_matrix<double>, 
-		kernel_type,
-		splash::ds::aligned_matrix<double>> correlator;
-	correlator(normalized, normalized, correlation, output);
-	etime = getSysTime();
-	FMT_ROOT_PRINT("Correlated in {} sec\n", get_duration_s(stime, etime));
-
-	// =============== WRITE OUT RESULTS ==============
-	// NOTE: rank 0 writes out.
-	stime = getSysTime();
-	write_matrix_distributed(common_params.output, "array", genes, genes, output);
-	etime = getSysTime();
-	FMT_ROOT_PRINT("Output in {} sec\n", get_duration_s(stime, etime));
-	FMT_FLUSH();
+    if(common_params.use_single) {
+        run<float>(common_params, mpi_params, app_params);
+    } else {
+        run<double>(common_params, mpi_params, app_params);
+    }
 	
 	return 0;
 }

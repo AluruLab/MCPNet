@@ -35,59 +35,35 @@
 #include <omp.h>
 #endif
 
+template<typename DataType>
 class app_parameters : public parameters_base {
 	public:
-		double target_val;  // target_value_to_replace
+		DataType target_val;  // target_value_to_replace
 
-		app_parameters(double const & target = 0) : 
+		app_parameters(DataType const & target = 0) : 
                 target_val(target) {}
+        app_parameters(const app_parameters<double>& other){
+                target_val = DataType(other.target_val);
+        }
 		virtual ~app_parameters() {}
 
 		virtual void config(CLI::App& app) {
 			app.add_option("--target-value", target_val, "new value to use.")->group("filter");
 		}
-		virtual void print(const char * prefix) {
-            FMT_ROOT_PRINT("{} new value: {}\n", prefix, target_val);
+		virtual void print(const char * prefix) const {
+            FMT_ROOT_PRINT("{} new value       : {}\n", prefix, target_val);
 		}
         
 };
 
-
-
-int main(int argc, char* argv[]) {
-
-	//==============  PARSE INPUT =====================
-	CLI::App app{"Stenciling Diagonal"};
-
-	// handle MPI (TODO: replace with MXX later)
-	splash::io::mpi_parameters mpi_params(argc, argv);
-	mpi_params.config(app);
-
-	// set up CLI parsers.
-	splash::io::common_parameters common_params;
-	app_parameters app_params;
-
-	common_params.config(app);
-	app_params.config(app);
-
-	// parse
-	CLI11_PARSE(app, argc, argv);
-
-	// print out, for fun.
-	FMT_ROOT_PRINT_RT("command line: ");
-	for (int i = 0; i < argc; ++i) {
-		FMT_ROOT_PRINT("{} ", argv[i]);
-	}
-	FMT_ROOT_PRINT("\n");
-
-
-#ifdef USE_OPENMP
-	omp_set_num_threads(common_params.num_threads);
-#endif
+template<typename DataType>
+void run(splash::io::common_parameters& common_params,
+         splash::io::mpi_parameters& mpi_params,
+         app_parameters<DataType>& app_params ){
 
 	// =============== SETUP INPUT ===================
 	// NOTE: input data is replicated on all MPI procs.
-	using MatrixType = splash::ds::aligned_matrix<double>;
+	using MatrixType = splash::ds::aligned_matrix<DataType>;
 	MatrixType input, pv;
 	std::vector<std::string> genes;
 	std::vector<std::string> samples;
@@ -97,14 +73,15 @@ int main(int argc, char* argv[]) {
 
 	stime = getSysTime();
 	if (common_params.random) {
-		input = make_random_matrix(common_params.rseed, 
+		input = make_random_matrix<DataType>(common_params.rseed, 
 			common_params.rmin, common_params.rmax, 
 			common_params.num_vectors, common_params.vector_size,
 			genes, samples);
 	} else {
-		input = read_matrix<double>(common_params.input, "array", 
+		input = read_matrix<DataType>(common_params.input, common_params.h5_group,
 			common_params.num_vectors, common_params.vector_size,
-			genes, samples);
+			genes, samples, common_params.skip, 1, common_params.h5_gene_key,
+            common_params.h5_samples_key, common_params.h5_matrix_key);
 	}
 	etime = getSysTime();
 	FMT_ROOT_PRINT("Load data in {} sec\n", get_duration_s(stime, etime));
@@ -150,6 +127,48 @@ int main(int argc, char* argv[]) {
 	FMT_ROOT_PRINT("Output in {} sec\n", get_duration_s(stime, etime));
 	FMT_FLUSH();
 
+
+
+}
+
+
+int main(int argc, char* argv[]) {
+
+	//==============  PARSE INPUT =====================
+	CLI::App app{"Stenciling Diagonal"};
+
+	// handle MPI (TODO: replace with MXX later)
+	splash::io::mpi_parameters mpi_params(argc, argv);
+	mpi_params.config(app);
+
+	// set up CLI parsers.
+	splash::io::common_parameters common_params;
+	app_parameters<double> app_params;
+
+	common_params.config(app);
+	app_params.config(app);
+
+	// parse
+	CLI11_PARSE(app, argc, argv);
+
+	// print out, for fun.
+	FMT_ROOT_PRINT_RT("command line: ");
+	for (int i = 0; i < argc; ++i) {
+		FMT_ROOT_PRINT("{} ", argv[i]);
+	}
+	FMT_ROOT_PRINT("\n");
+
+
+#ifdef USE_OPENMP
+	omp_set_num_threads(common_params.num_threads);
+#endif
+
+    if(common_params.use_single) {
+        app_parameters<float> flapp_params(app_params);
+        run<float>(common_params, mpi_params, flapp_params);
+    } else {
+        run<double>(common_params, mpi_params, app_params);
+    }
 
 	return 0;
 }
