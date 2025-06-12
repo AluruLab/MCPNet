@@ -1,5 +1,7 @@
--I/usr/include/mpich
--I/usr/include/hdf5/mpich
+-I/usr/include/x86_64-linux-gnu/mpi/
+-I/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi
+-I/usr/include/hdf5/openmpi 
+-I/usr/include/hdf5/mpich/
 -I./include
 -I./ext/splash/include
 -I./ext/splash/ext/fmt/include

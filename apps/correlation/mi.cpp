@@ -92,6 +92,9 @@ void run(splash::io::common_parameters& common_params,
             common_params.skip, 1, common_params.h5_gene_key,
             common_params.h5_samples_key, common_params.h5_matrix_key);
 	}
+	if(input.rows() == samples.size() && input.columns() == genes.size()){
+		input = input.local_transpose();
+	}
 	etime = getSysTime();
 	FMT_ROOT_PRINT("Load data in {} sec\n", get_duration_s(stime, etime));
 
@@ -102,6 +105,16 @@ void run(splash::io::common_parameters& common_params,
         std::cout << "No. GENES    : " << genes.size() << std::endl;
         std::cout << "No. SAMPLES  : " << samples.size() << std::endl;
         std::cout << "INPUT SIZE   : " << input.rows() << "x" << input.columns() << std::endl;
+	}
+	if(input.rows() != genes.size() && input.columns() != samples.size()){
+		if(mpi_params.rank == 0) {
+            std::cout << "INPUT SIZE   : "
+            	<< input.rows() << " x " << input.columns()
+            	<< "DOEST NOT MATCH genes X samples "
+            	<< genes.size() << "x" << samples.size()
+            	<< std::endl;
+		}
+		return;
 	}
 	if (app_params.method == app_parameters::method_type::ADAPTIVE_FAST) {
 
