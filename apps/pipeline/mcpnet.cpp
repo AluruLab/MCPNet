@@ -752,11 +752,15 @@ int main(int argc, char* argv[]) {
 	omp_set_num_threads(common_params.num_threads);
 #endif
 
+	auto stime = getSysTime();
+	auto etime = getSysTime();
     if(common_params.use_single) {
         app_parameters<float> flapp_params(app_params);
         run<float>(common_params, mpi_params, flapp_params);
     } else {
         run<double>(common_params, mpi_params, app_params);
     }
+	etime = getSysTime();
+	FMT_ROOT_PRINT("Total MCP Net computation time :: {} sec\n", get_duration_s(stime, etime));
 	return 0;
 }

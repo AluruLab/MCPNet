@@ -115,10 +115,14 @@ void run(splash::io::common_parameters& common_params,
 			common_params.num_vectors, common_params.vector_size,
 			genes, samples);
 	} else {
-		input = read_matrix<DataType>(common_params.input, common_params.h5_group, 
-			common_params.num_vectors, common_params.vector_size,
-			genes, samples, common_params.skip, 1, common_params.h5_gene_key,
+		input = read_matrix<DataType>(common_params.input,
+			common_params.h5_group, common_params.num_vectors,
+			common_params.vector_size, genes, samples,
+			common_params.skip, 1, common_params.h5_gene_key,
             common_params.h5_samples_key, common_params.h5_matrix_key);
+	}
+	if(input.rows() == samples.size() && input.columns() == genes.size()){
+		input = input.local_transpose();
 	}
 	etime = getSysTime();
 	FMT_ROOT_PRINT("Load data in {} sec\n", get_duration_s(stime, etime));
@@ -139,6 +143,19 @@ void run(splash::io::common_parameters& common_params,
 		mpi_params.print("[PARAM] ");
 		common_params.print("[PARAM] ");
 		app_params.print("[PARAM] ");
+        std::cout << "No. GENES    : " << genes.size() << std::endl;
+        std::cout << "No. SAMPLES  : " << samples.size() << std::endl;
+        std::cout << "INPUT SIZE   : " << input.rows() << "x" << input.columns() << std::endl;
+	}
+	if(input.rows() != genes.size() && input.columns() != samples.size()){
+		if(mpi_params.rank == 0) {
+            std::cout << "INPUT SIZE   : "
+            	<< input.rows() << " x " << input.columns()
+            	<< "DOEST NOT MATCH genes X samples "
+            	<< genes.size() << "x" << samples.size()
+            	<< std::endl;
+		}
+		return;
 	}
 
 	// =============== PARTITION and RUN ===================
@@ -340,6 +357,8 @@ int main(int argc, char* argv[]) {
 #ifdef USE_OPENMP
 	omp_set_num_threads(common_params.num_threads);
 #endif
+	auto stime = getSysTime();
+	auto etime = getSysTime();
 
     if(common_params.use_single) {
         app_parameters<float> flapp_params(app_params);
@@ -347,6 +366,8 @@ int main(int argc, char* argv[]) {
     } else {
         run<double>(common_params, mpi_params, app_params);
     }
+	etime = getSysTime();
+	FMT_ROOT_PRINT("Total DPI computation in {} sec\n", get_duration_s(stime, etime));
 	
 	return 0;
 }
